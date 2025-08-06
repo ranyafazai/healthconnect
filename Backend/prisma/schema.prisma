@@ -13,107 +13,200 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// --------------------
+// User & Auth
+// --------------------
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  password     String
-  firstName    String
-  lastName     String
-  phone        String?
-  userType     UserType      @default(PATIENT)
-  doctor       Doctor?
-  patient      Patient?
-  sentMessages ChatMessage[] @relation("UserSentMessages")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                Int              @id @default(autoincrement())
+  email             String           @unique
+  password          String
+  role              UserRole
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  doctorProfile     DoctorProfile?
+  patientProfile    PatientProfile?
+  notifications     Notification[]
+  messagesSent      Message[]        @relation("MessagesSent")
+  messagesReceived  Message[]        @relation("MessagesReceived")
+  files             File[]
 }
 
-enum UserType {
-  PATIENT
+enum UserRole {
   DOCTOR
-  ADMIN
+  PATIENT
 }
 
-model Doctor {
-  id             Int            @id @default(autoincrement())
-  userId         Int            @unique
-  user           User           @relation(fields: [userId], references: [id])
-  specialization String
-  qualifications String
-  experience     Int
-  bio            String?
-  availability   Availability[]
-  appointments   Appointment[]
-  ratings        Rating[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+// --------------------
+// Doctor & Patient Profiles
+// --------------------
+model DoctorProfile {
+  id                Int              @id @default(autoincrement())
+  userId            Int              @unique
+  firstName         String
+  lastName          String
+  photoId           Int?             // linked to File
+  professionalBio   String?
+  specialization    String
+  yearsExperience   Int
+  medicalLicense    String
+  certifications    String?
+  officeAddress     String?
+  city              String?
+  state             String?
+  zipCode           String?
+  phoneNumber       String?
+  emergencyContact  String?
+  availability      Json 
+  avgReview         Float?           @default(0)
+
+  user              User             @relation(fields: [userId], references: [id])
+  appointments      Appointment[]
+  reviews           Review[]
 }
 
-model Patient {
-  id           Int           @id @default(autoincrement())
-  userId       Int           @unique
-  user         User          @relation(fields: [userId], references: [id])
-  appointments Appointment[]
-  ratings      Rating[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+model PatientProfile {
+  id                Int              @id @default(autoincrement())
+  userId            Int              @unique
+  firstName         String
+  lastName          String
+  photoId           Int?
+  phoneNumber       String?
+  dateOfBirth       DateTime?
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  medicalHistory    String?
+
+  user              User             @relation(fields: [userId], references: [id])
+  appointments      Appointment[]
+  reviews           Review[]
+  medicalRecords    MedicalRecord[]
 }
 
-model Availability {
-  id        Int      @id @default(autoincrement())
-  doctorId  Int
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
-  day       String // e.g., "Monday", "Tuesday"
-  startTime DateTime
-  endTime   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
+// --------------------
+// Appointments & Consultations
+// --------------------
 model Appointment {
-  id           Int               @id @default(autoincrement())
-  patientId    Int
-  patient      Patient           @relation(fields: [patientId], references: [id])
-  doctorId     Int
-  doctor       Doctor            @relation(fields: [doctorId], references: [id])
-  dateTime     DateTime
-  duration     Int               @default(30) // in minutes
-  status       AppointmentStatus @default(SCHEDULED)
-  videoLink    String?
-  chatMessages ChatMessage[]
-  ratings      Rating[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                Int              @id @default(autoincrement())
+  doctorId          Int
+  patientId         Int
+  date              DateTime
+  status            AppointmentStatus
+  type              ConsultationType
+  reason            String?
+  notes             String?
+  recordingId       Int?             // linked to File
+  createdAt         DateTime         @default(now())
+
+  doctor            DoctorProfile    @relation(fields: [doctorId], references: [id])
+  patient           PatientProfile   @relation(fields: [patientId], references: [id])
 }
 
 enum AppointmentStatus {
-  SCHEDULED
+  PENDING
+  CONFIRMED
   COMPLETED
   CANCELLED
-  NO_SHOW
 }
 
-model ChatMessage {
-  id            Int         @id @default(autoincrement())
-  appointmentId Int
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  senderId      Int
-  sender        User        @relation(fields: [senderId], references: [id], name: "UserSentMessages")
-  message       String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+enum ConsultationType {
+  TEXT
+  VIDEO
 }
 
-model Rating {
-  id            Int         @id @default(autoincrement())
-  appointmentId Int
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  patientId     Int
-  patient       Patient     @relation(fields: [patientId], references: [id])
-  doctorId      Int
-  doctor        Doctor      @relation(fields: [doctorId], references: [id])
-  rating        Int
-  review        String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+// --------------------
+// Messaging
+// --------------------
+model Message {
+  id                Int              @id @default(autoincrement())
+  senderId          Int
+  receiverId        Int
+  appointmentId     Int?
+  content           String?
+  type              MessageType
+  fileId            Int?
+  isRead            Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+
+  sender            User             @relation("MessagesSent", fields: [senderId], references: [id])
+  receiver          User             @relation("MessagesReceived", fields: [receiverId], references: [id])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  VIDEO
+}
+
+// --------------------
+// Reviews
+// --------------------
+model Review {
+  id                Int              @id @default(autoincrement())
+  doctorId          Int
+  patientId         Int
+  rating            Int
+  comment           String?
+  createdAt         DateTime         @default(now())
+
+  doctor            DoctorProfile    @relation(fields: [doctorId], references: [id])
+  patient           PatientProfile   @relation(fields: [patientId], references: [id])
+}
+
+// --------------------
+// Medical Records
+// --------------------
+model MedicalRecord {
+  id                Int              @id @default(autoincrement())
+  patientId         Int
+  title             String
+  description       String?
+  fileId            Int?
+  createdAt         DateTime         @default(now())
+
+  patient           PatientProfile   @relation(fields: [patientId], references: [id])
+}
+
+// --------------------
+// File Management
+// --------------------
+model File {
+  id                Int              @id @default(autoincrement())
+  ownerId           Int
+  url               String
+  fileType          FileType
+  createdAt         DateTime         @default(now())
+
+  owner             User             @relation(fields: [ownerId], references: [id])
+}
+
+enum FileType {
+  PROFILE_PICTURE
+  CONSULTATION_RECORDING
+  MEDICAL_DOCUMENT
+  CHAT_MEDIA
+}
+
+// --------------------
+// Notifications
+// --------------------
+model Notification {
+  id                Int              @id @default(autoincrement())
+  userId            Int
+  type              NotificationType
+  content           String
+  isRead            Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+
+  user              User             @relation(fields: [userId], references: [id])
+}
+
+enum NotificationType {
+  APPOINTMENT
+  MESSAGE
+  REVIEW
+  SYSTEM
 }
