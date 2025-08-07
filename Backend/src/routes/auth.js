@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '../config/database';
+import prisma from '../config/database.js';
 import { config } from '../config/env';
 import { authenticateToken } from '../middleware/auth';
 

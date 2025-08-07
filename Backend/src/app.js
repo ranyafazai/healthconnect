@@ -1,12 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const { config } = require('./config/env');
-const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
-const authRoutes = require('./routes/auth');
-const appointmentRoutes = require('./routes/appointments');
-const userRoutes = require('./routes/users');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { config } from './config/env.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import authRoutes from './routes/auth.js';
+import appointmentRoutes from './routes/appointments.js';
+import userRoutes from './routes/users.js';
 
 const app = express();
 
@@ -33,4 +33,4 @@ app.get('/health', (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

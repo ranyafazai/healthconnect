@@ -1,6 +1,6 @@
 import app from './app.js';
-import { config } from './config/env';
-import prisma from './config/database';
+import { config } from './config/env.js';
+import prisma from './config/database.js';
 import { log } from 'console';
 
 console.log('conffff', config);
