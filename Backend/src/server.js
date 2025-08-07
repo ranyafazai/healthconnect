@@ -1,43 +1,74 @@
-import app from './app.js';
-import { config } from './config/env.js';
-import prisma from './config/database.js';
-import { log } from 'console';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import doctorRoutes from './routes/doctors.js';
+import patientRoutes from './routes/patients.js';
+import appointmentRoutes from './routes/appointments.js';
+import messageRoutes from './routes/messages.js';
+import reviewRoutes from './routes/reviews.js';
+import medicalRecordRoutes from './routes/medicalRecords.js';
+import fileRoutes from './routes/files.js';
+import notificationRoutes from './routes/notifications.js';
 
-console.log('conffff', config);
+dotenv.config();
 
-const PORT = config.port;
+const app = express();
+const prisma = new PrismaClient();
+const PORT = process.env.PORT || 5000;
 
-async function startServer() {
-  try {
-    // Test database connection
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(morgan('combined'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-}
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/medical-records', medicalRecordRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
 // Graceful shutdown
-const gracefulShutdown = (signal) => {
-  console.log(`\n👋 Received ${signal}. Shutting down gracefully...`);
-  prisma.$disconnect()
-    .then(() => {
-      console.log('🛑 Database disconnected');
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error('Error during disconnect:', err);
-      process.exit(1);
-    });
-};
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
 
-startServer();
+export default app;

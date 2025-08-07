@@ -1,69 +1,90 @@
 import express from 'express';
-import prisma from '../config/database';
-import { authenticateToken } from '../middleware/auth';
+import { PrismaClient } from '@prisma/client';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
-// Get user profile
-router.get('/profile', authenticateToken, async (req, res, next) => {
+// Get all users (admin only)
+router.get('/', authenticateToken, authorizeRole('ADMIN'), async (req, res) => {
   try {
-    const { role, id } = req.user;
-
-    let profile;
-    if (role === 'DOCTOR') {
-      profile = await prisma.doctorProfile.findUnique({
-        where: { userId: id },
-        include: {
-          user: {
-            select: { email: true }
-          }
-        }
-      });
-    } else {
-      profile = await prisma.patientProfile.findUnique({
-        where: { userId: id },
-        include: {
-          user: {
-            select: { email: true }
-          }
-        }
-      });
-    }
-
-    if (!profile) {
-      const error = new Error('Profile not found');
-      error.statusCode = 404;
-      throw error;
-    }
-
-    res.json({ profile });
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    res.json(users);
   } catch (error) {
-    next(error);
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-// Update user profile
-router.put('/profile', authenticateToken, async (req, res, next) => {
+// Get user by ID
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const { role, id } = req.user;
-    const updateData = req.body;
+    const { id } = req.params;
+    
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        doctorProfile: true,
+        patientProfile: true
+      }
+    });
 
-    let profile;
-    if (role === 'DOCTOR') {
-      profile = await prisma.doctorProfile.update({
-        where: { userId: id },
-        data: updateData
-      });
-    } else {
-      profile = await prisma.patientProfile.update({
-        where: { userId: id },
-        data: updateData
-      });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ profile });
+    res.json(user);
   } catch (error) {
-    next(error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// Update user
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, role } = req.body;
+
+    if (req.user.id !== parseInt(id) && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized to update this user' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data: { email, role },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        updatedAt: true
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Delete user
+router.delete('/:id', authenticateToken, authorizeRole('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.user.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
