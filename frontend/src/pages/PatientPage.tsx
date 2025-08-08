@@ -1,23 +1,30 @@
-import React from 'react'
-import { Route, Routes } from 'react-router-dom'
-import NotFound from './NotFound'
+import { Route, Routes } from "react-router-dom";
+import Sidebar from "../layout/PatientLayout/Sidebar";
+import Profile from "../layout/PatientLayout/Profile";
+import Appointments from "../layout/PatientLayout/Appointments";
+import PastConsultation from "../layout/PatientLayout/PastConsultation";
+import Messages from "../layout/PatientLayout/Messages";
+import Settings from "../layout/PatientLayout/Settings";
+import Dashboard from "@/layout/doctorLayout/Dashboard";
+import NotFound from "./NotFound";
 
 function PatientPage() {
   return (
-    <div>
-        {/* SideBar */}
-    <Routes>
-        <Route path="" element={<div className="App">Dashboard</div>} />
-        <Route path="appointments" element={<div>Appointments</div>} />
-        <Route path="past-consultation" element={<div>Past consultation</div>} />
-        <Route path="messages" element={<div>Messages</div>} />
-        <Route path="profile" element={<div>Profile </div>} />
-        <Route path="settings" element={<div>Settings </div>} />
-        <Route path="*" element={<NotFound />} />
-
-    </Routes>  
+    <div className="flex">
+      <Sidebar />
+      <main className="flex-1 p-6 bg-gray-50 min-h-screen">
+        <Routes>
+          <Route path="" element={<Dashboard />} />
+          <Route path="appointments" element={<Appointments />} />
+          <Route path="past-consultation" element={<PastConsultation />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="profile/*" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
     </div>
-  )
+  );
 }
 
-export default PatientPage
+export default PatientPage;
