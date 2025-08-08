@@ -1,8 +1,8 @@
-const prisma = require('../../db');
-const bcrypt = require('bcryptjs');
-const generateToken = require('../utils/generateToken');
+import { prisma } from '../app.js';
+import bcrypt from 'bcryptjs';
+import generateToken from '../utils/generateToken.js';
 
-async function registerUser({ email, password, role }) {
+export async function registerUser({ email, password, role }) {
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) throw Object.assign(new Error('Email already registered'), { status: 409 });
 
@@ -12,7 +12,7 @@ async function registerUser({ email, password, role }) {
     data: {
       email: email.toLowerCase(),
       password: hash,
-      role: role || 'USER', // Default role if not provided
+      role: role || 'PATIENT', // Default role if not provided
     },
   });
 
@@ -29,7 +29,7 @@ async function registerUser({ email, password, role }) {
   };
 }
 
-async function loginUser({ email, password }) {
+export async function loginUser({ email, password }) {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   if (!user) throw Object.assign(new Error('Invalid credentials'), { status: 401 });
 
@@ -48,5 +48,3 @@ async function loginUser({ email, password }) {
     },
   };
 }
-
-module.exports = { registerUser, loginUser };

@@ -1,7 +1,8 @@
-const { registerUser, loginUser } = require('../services/auth.service');
-const { validationResult } = require('express-validator');
+import { registerUser, loginUser } from '../services/auth.service.js';
+import { validationResult } from 'express-validator';
+import { prisma } from '../app.js';
 
-exports.register = async (req, res, next) => {
+export const register = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -21,7 +22,7 @@ exports.register = async (req, res, next) => {
   }
 };
 
-exports.login = async (req, res, next) => {
+export const login = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -42,7 +43,21 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.me = async (req, res) => {
+export const logout = async (req, res) => {
+  try {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error during logout' });
+  }
+};
+
+export const me = async (req, res) => {
   if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
   res.json({ user: req.user });
 };

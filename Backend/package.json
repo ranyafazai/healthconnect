@@ -1,22 +1,27 @@
 {
-  "name": "backend",
+  "name": "healthyconnect-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API for HealthyConnect telehealth platform",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "build": "npm run prisma:generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset --force",
     "prisma:studio": "prisma studio",
+    "prisma:deploy": "prisma migrate deploy",
     "seed": "node fakeData/seed.js",
-    "prisma:setup": "npm run prisma:migrate && npm run seed"
+    "prisma:setup": "npm run prisma:migrate && npm run seed",
+    "test": "jest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["telehealth", "healthcare", "api", "nodejs", "express", "prisma"],
+  "author": "HealthyConnect Team",
+  "license": "MIT",
   "dependencies": {
     "@faker-js/faker": "^9.9.0",
     "@prisma/client": "^6.13.0",
@@ -25,15 +30,45 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.1.5",
     "express-validator": "^7.2.1",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "socket.io": "^4.8.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "winston": "^3.11.0",
+    "compression": "^1.7.4",
+    "express-slow-down": "^2.0.1",
+    "node-cron": "^3.0.3",
+    "sharp": "^0.33.2",
+    "aws-sdk": "^2.1574.0",
+    "cloudinary": "^1.41.3",
+    "nodemailer": "^6.9.8",
+    "twilio": "^4.20.1",
+    "stripe": "^14.17.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
     "prisma": "^6.13.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4",
+    "eslint": "^8.57.0",
+    "@types/node": "^20.11.19",
+    "@types/express": "^4.17.21",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/multer": "^1.4.11",
+    "@types/morgan": "^1.9.9",
+    "@types/cookie-parser": "^1.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/nodemailer": "^6.4.14"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

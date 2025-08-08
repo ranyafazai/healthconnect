@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { register, login, logout, me } from '../controllers/auth.controller.js';
+import { body } from 'express-validator';
+import authMiddleware from '../middlewares/authMiddleware.js';
+
 const router = express.Router();
-const { register, login, logout, me } = require('../controllers/auth.controller');
-const { body } = require('express-validator');
-const authMiddleware = require('../middlewares/authMiddleware');
 
 router.post(
   '/register',
@@ -26,4 +27,4 @@ router.post(
 router.post('/logout', authMiddleware, logout);
 router.get('/me', authMiddleware, me);
 
-module.exports = router;
+export default router;

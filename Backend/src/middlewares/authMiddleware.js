@@ -1,6 +1,7 @@
-const jwt = require('jsonwebtoken');
-const prisma = require('../../db');
-module.exports = async function (req, res, next) {
+import jwt from 'jsonwebtoken';
+import { prisma } from '../app.js';
+
+export default async function (req, res, next) {
   try {
     const token = req.cookies?.token || (req.headers.authorization || '').replace('Bearer ', '');
     if (!token) return res.status(401).json({ message: 'Not authenticated' });
@@ -13,4 +14,4 @@ module.exports = async function (req, res, next) {
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
-};
+}
