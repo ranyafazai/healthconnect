@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import NotFound from './NotFound'
 
 function LandingPage() {
   return (
@@ -8,6 +9,8 @@ function LandingPage() {
         <Route path="register" element={<div>Register</div>} />
         <Route path="about" element={<div>About Us</div>} />
         <Route path="contact" element={<div>Contact Us</div>} />
+        <Route path="*" element={<NotFound />} />
+
     </Routes>
   )
 }

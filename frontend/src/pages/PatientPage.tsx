@@ -1,5 +1,6 @@
 import React from 'react'
 import { Route, Routes } from 'react-router-dom'
+import NotFound from './NotFound'
 
 function PatientPage() {
   return (
@@ -12,6 +13,8 @@ function PatientPage() {
         <Route path="messages" element={<div>Messages</div>} />
         <Route path="profile" element={<div>Profile </div>} />
         <Route path="settings" element={<div>Settings </div>} />
+        <Route path="*" element={<NotFound />} />
+
     </Routes>  
     </div>
   )

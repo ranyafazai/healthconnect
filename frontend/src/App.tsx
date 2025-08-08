@@ -9,9 +9,9 @@ function App() {
     <BrowserRouter>
     {/* NavBar component can be added here if needed */}
       <Routes>        
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/*" element={<LandingPage />} />
         <Route path="/patient/*" element={<PatientPage />} />
-        <Route path="/doctor" element={<DoctorPage />} />
+        <Route path="/doctor/*" element={<DoctorPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
