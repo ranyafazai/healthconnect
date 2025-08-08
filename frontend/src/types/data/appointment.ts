@@ -1,5 +1,5 @@
-import type { DoctorProfile } from '../doctor';
-import type { PatientProfile } from '../patient';
+import type { DoctorProfile } from './doctor';
+import type { PatientProfile } from './patient';
 import type { Message } from '../state/message';
 import type { File } from './file';
 

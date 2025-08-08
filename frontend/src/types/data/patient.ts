@@ -1,4 +1,8 @@
-import type { User } from './user';
+import type { User } from '.';
+import type { File } from '.';
+import type { Appointment } from './appointment';
+import type { Review } from './review';
+import type { MedicalRecord } from './medicalRecord';
 
 export interface PatientProfile {
   id: number;
@@ -6,13 +10,17 @@ export interface PatientProfile {
   firstName: string;
   lastName: string;
   photoId?: number;
-  dateOfBirth: Date;
-  gender: string;
-  bloodType?: string;
-  allergies?: string[];
+  phoneNumber?: string;
+  dateOfBirth?: Date;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   medicalHistory?: string;
-  emergencyContact?: string;
-  insuranceProvider?: string;
-  insuranceNumber?: string;
+  
   user?: User;
+  photo?: File;
+  appointments?: Appointment[];
+  reviews?: Review[];
+  medicalRecords?: MedicalRecord[];
 }

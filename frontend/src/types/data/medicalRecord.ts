@@ -1,4 +1,4 @@
-import type { PatientProfile } from '../patient';
+import type { PatientProfile } from './patient';
 import type { File } from './file';
 
 export interface MedicalRecord {

@@ -1,18 +1,18 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import PatientPage from "./pages/PatientPage";
+import DoctorPage from "./pages/DoctorPage";
+import LandingPage from "./pages/LandingPage";
+import NotFound from "./pages/NotFound";
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={<div className="App">Welcome to HealthyConnect</div>}
-        />
-        <Route path="/doctors" element={<div>Doctors List</div>} />
-        <Route path="/patients" element={<div>Patients List</div>} />
-        <Route path="/appointments" element={<div>Appointments</div>} />
-        <Route path="/reviews" element={<div>Reviews</div>} />
+    {/* NavBar component can be added here if needed */}
+      <Routes>        
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/patient/*" element={<PatientPage />} />
+        <Route path="/doctor" element={<DoctorPage />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

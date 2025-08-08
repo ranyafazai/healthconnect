@@ -1,4 +1,4 @@
-import type { DoctorProfile } from '../doctor';
+import type { DoctorProfile } from './doctor';
 import type { PatientProfile } from './patient';
 import type { Notification } from './notification';
 import type { Message } from './message';
