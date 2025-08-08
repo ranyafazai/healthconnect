@@ -7,6 +7,7 @@ import Messages from "../layout/PatientLayout/Messages";
 import Settings from "../layout/PatientLayout/Settings";
 import Dashboard from "@/layout/doctorLayout/Dashboard";
 import NotFound from "./NotFound";
+import BookingProcess from "../layout/PatientLayout/BookingProces";
 
 function PatientPage() {
   return (
@@ -14,6 +15,7 @@ function PatientPage() {
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
         <Routes>
+          <Route path="booking" element={<BookingProcess />} />
           <Route path="" element={<Dashboard />} />
           <Route path="appointments" element={<Appointments />} />
           <Route path="past-consultation" element={<PastConsultation />} />

@@ -2,12 +2,13 @@
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import dotenv from "dotenv";
-// import cookieParser from "cookie-parser";
 import app from "./app.js";
-import {prisma} from "./config/db.js";
-// import registerChatSocket from "./sockets/chat.socket.js";
-// import registerVideoCallSocket from "./sockets/videoCall.socket.js";
-// import registerNotificationSocket from "./sockets/notification.socket.js";
+import { prisma } from "./app.js";
+import socketConfig from "./config/socket.js";
+import registerChatSocket from "./sockets/chat.socket.js";
+import registerVideoCallSocket from "./sockets/videoCall.socket.js";
+import registerNotificationSocket from "./sockets/notification.socket.js";
+import logger from "./config/logger.js";
 
 dotenv.config();
 
@@ -15,76 +16,103 @@ const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
 
-// Ensure cookies are parsed (authMiddleware reads req.cookies)
-// app.use(cookieParser());
+// Initialize Socket.IO
+const io = socketConfig.initSocket(server);
 
-app.get('/:id', async (req, res) => {
-  try {
-    const doctorId = parseInt(req.params.id);
+// Register socket namespaces
+const chatNamespace = registerChatSocket(io);
+const videoCallNamespace = registerVideoCallSocket(io);
+const notificationServices = registerNotificationSocket(io);
 
-    const doctor = await prisma.doctorProfile.findUnique({
-      where: {
-        id: doctorId
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            createdAt: true,
-            updatedAt: true
-          }
-        },
-        photo: true,
-        appointments: {
-          include: {
-            patient: {
-              include: {
-                user: {
-                  select: {
-                    email: true
-                  }
-                }
-              }
-            },
-            recording: true,
-            messages: true
-          }
-        },
-        reviews: {
-          include: {
-            patient: {
-              include: {
-                user: {
-                  select: {
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        certifications: {
-          include: {
-            file: true
-          }
-        }
-      }
-    });
+// Make notification services available globally
+global.notificationServices = notificationServices;
 
-    if (!doctor) {
-      return res.status(404).json({ error: 'Doctor not found' });
+// WebRTC STUN/TURN server configuration
+const webRTCConfig = {
+  iceServers: [
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun2.l.google.com:19302',
+        'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302'
+      ]
     }
+  ],
+  iceCandidatePoolSize: 10
+};
 
-    res.json(doctor);
-  } catch (error) {
-    console.error('Error fetching doctor:', error);
-    res.status(500).json({ error: 'Failed to fetch doctor details' });
-  }
+// Add TURN servers if configured
+if (process.env.TURN_SERVER_URL && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+  webRTCConfig.iceServers.push({
+    urls: process.env.TURN_SERVER_URL,
+    username: process.env.TURN_USERNAME,
+    credential: process.env.TURN_CREDENTIAL
+  });
+}
+
+// Make WebRTC config available to socket namespaces
+io.webRTCConfig = webRTCConfig;
+
+// Socket connection logging
+io.on('connection', (socket) => {
+  logger.info(`Main socket connected: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    logger.info(`Main socket disconnected: ${socket.id}`);
+  });
 });
 
+// WebRTC configuration endpoint
+app.get('/api/webrtc-config', (req, res) => {
+  res.json({
+    iceServers: webRTCConfig.iceServers,
+    iceCandidatePoolSize: webRTCConfig.iceCandidatePoolSize
+  });
+});
 
+// Socket status endpoint
+app.get('/api/socket-status', (req, res) => {
+  const socketStatus = {
+    chat: chatNamespace.connected ? Object.keys(chatNamespace.connected).length : 0,
+    videoCall: videoCallNamespace.connected ? Object.keys(videoCallNamespace.connected).length : 0,
+    notifications: io.of('/notifications').connected ? Object.keys(io.of('/notifications').connected).length : 0,
+    total: io.engine.clientsCount
+  };
+  
+  res.json(socketStatus);
+});
+
+// Start server
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  logger.info(`🚀 Server running on port ${PORT}`);
+  logger.info(`📡 Socket.IO initialized`);
+  logger.info(`🌐 WebRTC configured with ${webRTCConfig.iceServers.length} ICE servers`);
+  logger.info(`🔗 Chat namespace: /chat`);
+  logger.info(`📹 Video call namespace: /video-call`);
+  logger.info(`🔔 Notification namespace: /notifications`);
 });
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down server gracefully');
+  socketConfig.closeSocket();
+  await prisma.$disconnect();
+  server.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down server gracefully');
+  socketConfig.closeSocket();
+  await prisma.$disconnect();
+  server.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
+  });
+});
+
+export { server, io };
