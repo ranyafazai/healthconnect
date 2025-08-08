@@ -15,7 +15,6 @@ exports.register = async (req, res, next) => {
       sameSite: 'lax',
       maxAge: parseInt(process.env.JWT_EXPIRES_MS || '86400000'),
     });
-
     return res.status(201).json({ user: user.safeUser });
   } catch (err) {
     next(err);
@@ -41,11 +40,6 @@ exports.login = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-};
-
-exports.logout = (req, res) => {
-  res.clearCookie('token');
-  res.json({ message: 'Logged out' });
 };
 
 exports.me = async (req, res) => {

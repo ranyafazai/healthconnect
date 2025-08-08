@@ -1,4 +1,3 @@
-// frontend/src/Redux/authSlice.ts
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export interface UserLite {
@@ -7,7 +6,6 @@ export interface UserLite {
   role?: string | null;
   createdAt?: string | null;
 }
-
 interface LocalAuthState {
   isAuthenticated: boolean;
   user: UserLite | null;
