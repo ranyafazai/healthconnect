@@ -1,4 +1,3 @@
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 import Sidebar from "../layout/PatientLayout/Sidebar";
 import Profile from "../layout/PatientLayout/Profile";
@@ -14,15 +13,15 @@ function PatientPage() {
     <div className="flex">
       <Sidebar />
       <main className="flex-1 p-6 bg-gray-50 min-h-screen">
-      <Routes>
-        <Route path="" element={<Dashboard />} />
-        <Route path="appointments" element={<Appointments />} />
-        <Route path="past-consultation" element={<PastConsultation />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="profile/*" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+        <Routes>
+          <Route path="" element={<Dashboard />} />
+          <Route path="appointments" element={<Appointments />} />
+          <Route path="past-consultation" element={<PastConsultation />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="profile/*" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
     </div>
   );
