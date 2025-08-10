@@ -1,46 +1,86 @@
 import { prisma } from '../app.js';
-import { 
-  successResponse, 
-  errorResponse, 
-  notFoundResponse, 
+import {
+  successResponse,
+  errorResponse,
+  notFoundResponse,
   serverErrorResponse,
   createdResponse,
   videoCallResponse,
-  listResponse
+  listResponse,
 } from '../utils/responseFormatter.js';
 
 class VideoCallController {
-  // Create video call
+  // Create video call (creates a VIDEO message linked to the appointment and then a VideoCall)
   async createVideoCall(req, res) {
     try {
       const { appointmentId, roomId } = req.body;
-      const userId = req.user.id;
+      const requesterUserId = req.user.id;
 
-      if (!appointmentId || !roomId) {
-        return res.status(400).json(errorResponse('Appointment ID and room ID are required', 400));
+      if (!appointmentId) {
+        return res
+          .status(400)
+          .json(errorResponse('Appointment ID is required', 400));
       }
 
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: parseInt(appointmentId) },
+        include: {
+          doctor: { include: { user: true } },
+          patient: { include: { user: true } },
+        },
+      });
+
+      if (!appointment) {
+        return res.status(404).json(notFoundResponse('Appointment not found'));
+      }
+
+      // Validate requester is a participant
+      const isParticipant =
+        requesterUserId === appointment.doctor.userId ||
+        requesterUserId === appointment.patient.userId;
+      if (!isParticipant) {
+        return res.status(403).json(errorResponse('Access denied', 403));
+      }
+
+      const otherUserId =
+        requesterUserId === appointment.doctor.userId
+          ? appointment.patient.userId
+          : appointment.doctor.userId;
+
+      // Create signaling message for the call
+      const message = await prisma.message.create({
+        data: {
+          senderId: requesterUserId,
+          receiverId: otherUserId,
+          appointmentId: appointment.id,
+          content: 'Video call initiated',
+          type: 'VIDEO',
+        },
+      });
+
+      // Create the video call linked to the message
       const videoCall = await prisma.videoCall.create({
         data: {
-          appointmentId: parseInt(appointmentId),
-          roomId,
-          status: 'INITIATED',
-          startTime: new Date()
+          messageId: message.id,
+          roomId: roomId || `room-${appointment.id}-${Date.now()}`,
+          status: 'PENDING',
+          startTime: new Date(),
         },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
-        }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
+        },
       });
 
       return res.status(201).json(videoCallResponse(videoCall, true));
     } catch (error) {
       console.error('Create video call error:', error);
-      return res.status(500).json(serverErrorResponse('Failed to create video call'));
+      return res
+        .status(500)
+        .json(serverErrorResponse('Failed to create video call'));
     }
   }
 
@@ -56,13 +96,12 @@ class VideoCallController {
       const videoCall = await prisma.videoCall.findUnique({
         where: { id: parseInt(id) },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
-        }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
+        },
       });
 
       if (!videoCall) {
@@ -90,22 +129,29 @@ class VideoCallController {
         return res.status(400).json(errorResponse('Status is required', 400));
       }
 
-      const validStatuses = ['INITIATED', 'CONNECTED', 'ENDED', 'FAILED'];
-      if (!validStatuses.includes(status)) {
+      // Map legacy statuses to current enum
+      const statusMap = {
+        INITIATED: 'PENDING',
+        CONNECTED: 'IN_PROGRESS',
+        ENDED: 'COMPLETED',
+        FAILED: 'CANCELLED',
+      };
+      const normalized = statusMap[status] || status;
+      const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+      if (!validStatuses.includes(normalized)) {
         return res.status(400).json(errorResponse('Invalid status', 400));
       }
 
       const videoCall = await prisma.videoCall.update({
         where: { id: parseInt(id) },
-        data: { status },
+        data: { status: normalized },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
-        }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
+        },
       });
 
       return res.json(videoCallResponse(videoCall, true));
@@ -126,18 +172,17 @@ class VideoCallController {
 
       const videoCall = await prisma.videoCall.update({
         where: { id: parseInt(id) },
-        data: { 
-          status: 'ENDED',
-          endTime: new Date()
+        data: {
+          status: 'COMPLETED',
+          endTime: new Date(),
         },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
-        }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
+        },
       });
 
       return res.json(videoCallResponse(videoCall, true));
@@ -157,16 +202,15 @@ class VideoCallController {
       }
 
       const videoCalls = await prisma.videoCall.findMany({
-        where: { appointmentId: parseInt(appointmentId) },
+        where: { message: { appointmentId: parseInt(appointmentId) } },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
 
       return res.json(listResponse(videoCalls, 'Video calls retrieved successfully', videoCalls.length));
@@ -187,22 +231,19 @@ class VideoCallController {
 
       const videoCalls = await prisma.videoCall.findMany({
         where: {
-          appointment: {
-            OR: [
-              { doctor: { userId: parseInt(userId) } },
-              { patient: { userId: parseInt(userId) } }
-            ]
-          }
+          OR: [
+            { message: { senderId: parseInt(userId) } },
+            { message: { receiverId: parseInt(userId) } },
+          ],
         },
         include: {
-          appointment: {
+          message: {
             include: {
-              doctor: true,
-              patient: true
-            }
-          }
+              appointment: { include: { doctor: true, patient: true } },
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
 
       return res.json(listResponse(videoCalls, 'Video calls retrieved successfully', videoCalls.length));

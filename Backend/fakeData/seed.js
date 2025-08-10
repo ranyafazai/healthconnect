@@ -95,8 +95,33 @@ async function main() {
     await prisma.patientProfile.deleteMany();
     await prisma.user.deleteMany();
 
+    // Create known test doctor and patient with predictable emails
+    const testDoctorPassword = await hashPassword('DoctorPass123!');
+    const testPatientPassword = await hashPassword('PatientPass123!');
+
+    const testDoctorUser = await prisma.user.create({
+      data: {
+        email: 'doctor.test@healthyconnect.com',
+        password: testDoctorPassword,
+        role: 'DOCTOR',
+        doctorProfile: { create: generateDoctorProfile() }
+      },
+      include: { doctorProfile: true }
+    });
+
+    const testPatientUser = await prisma.user.create({
+      data: {
+        email: 'patient.test@mail.com',
+        password: testPatientPassword,
+        role: 'PATIENT',
+        patientProfile: { create: generatePatientProfile() }
+      },
+      include: { patientProfile: true }
+    });
+
     // Create doctors
     const doctors = [];
+    doctors.push(testDoctorUser);
     for (let i = 0; i < 5; i++) {
       const password = await hashPassword('DoctorPass123!');
       const doctorData = generateDoctorProfile();
@@ -119,6 +144,7 @@ async function main() {
 
     // Create patients
     const patients = [];
+    patients.push(testPatientUser);
     for (let i = 0; i < 10; i++) {
       const password = await hashPassword('PatientPass123!');
       const patientData = generatePatientProfile();

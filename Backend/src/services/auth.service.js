@@ -4,7 +4,7 @@ import generateToken from '../utils/generateToken.js';
 
 export async function registerUser({ email, password, role }) {
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (existing) throw Object.assign(new Error('Email already registered'), { status: 409 });
+  if (existing) throw Object.assign(new Error('Email already registered'), { statusCode: 409 });
 
   const hash = await bcrypt.hash(password, 12);
 
@@ -31,10 +31,10 @@ export async function registerUser({ email, password, role }) {
 
 export async function loginUser({ email, password }) {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user) throw Object.assign(new Error('Invalid credentials'), { status: 401 });
+  if (!user) throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
 
   const match = await bcrypt.compare(password, user.password);
-  if (!match) throw Object.assign(new Error('Invalid credentials'), { status: 401 });
+  if (!match) throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
 
   const token = generateToken({ id: user.id });
 

@@ -9,6 +9,7 @@ import Dashboard from "@/layout/doctorLayout/Dashboard";
 import NotFound from "./NotFound";
 import BookingProcess from "../layout/PatientLayout/BookingProces";
 
+
 function PatientPage() {
   return (
     <div className="flex">
@@ -20,6 +21,7 @@ function PatientPage() {
           <Route path="appointments" element={<Appointments />} />
           <Route path="past-consultation" element={<PastConsultation />} />
           <Route path="messages" element={<Messages />} />
+
           <Route path="profile/*" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

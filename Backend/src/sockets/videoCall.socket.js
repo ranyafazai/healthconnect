@@ -45,8 +45,7 @@ export default function registerVideoCallSocket(io) {
           include: {
             doctor: { include: { user: true } },
             patient: { include: { user: true } },
-            videoCall: true
-          }
+          },
         });
 
         if (!appointment) {
@@ -55,25 +54,36 @@ export default function registerVideoCallSocket(io) {
         }
 
         // Check if user is part of this appointment
-        if (socket.userId !== appointment.doctor.userId && 
-            socket.userId !== appointment.patient.userId) {
+        if (
+          socket.userId !== appointment.doctor.userId &&
+          socket.userId !== appointment.patient.userId
+        ) {
           socket.emit('error', { message: 'Access denied' });
           return;
         }
 
-        let videoCall = appointment.videoCall;
+        // Try to find an existing call for this appointment via the latest VIDEO message
+        let videoCall = await prisma.videoCall.findFirst({
+          where: { message: { appointmentId: appointment.id, type: 'VIDEO' } },
+          orderBy: { createdAt: 'desc' },
+        });
 
         // Create video call if it doesn't exist
         if (!videoCall) {
-          // Create a message for the video call
+          const otherUserId =
+            socket.userId === appointment.doctor.userId
+              ? appointment.patient.userId
+              : appointment.doctor.userId;
+
+          // Create a VIDEO message to link the call
           const message = await prisma.message.create({
             data: {
-              senderId: appointment.doctor.userId,
-              receiverId: appointment.patient.userId,
+              senderId: socket.userId,
+              receiverId: otherUserId,
               appointmentId: appointment.id,
               content: 'Video call initiated',
-              type: 'VIDEO'
-            }
+              type: 'VIDEO',
+            },
           });
 
           // Create video call record
@@ -81,8 +91,8 @@ export default function registerVideoCallSocket(io) {
             data: {
               messageId: message.id,
               roomId: roomId || `room-${appointment.id}-${Date.now()}`,
-              status: 'PENDING'
-            }
+              status: 'PENDING',
+            },
           });
         }
 
@@ -90,15 +100,15 @@ export default function registerVideoCallSocket(io) {
         socket.join(`call-${videoCall.roomId}`);
         socket.roomId = videoCall.roomId;
         socket.appointmentId = appointment.id;
-        
+
         // Update video call status to IN_PROGRESS if not already
         if (videoCall.status === 'PENDING') {
           await prisma.videoCall.update({
             where: { id: videoCall.id },
-            data: { 
+            data: {
               status: 'IN_PROGRESS',
-              startTime: new Date()
-            }
+              startTime: new Date(),
+            },
           });
         }
 
@@ -106,14 +116,16 @@ export default function registerVideoCallSocket(io) {
         socket.to(`call-${videoCall.roomId}`).emit('user-joined-call', {
           userId: socket.userId,
           userRole: socket.userRole,
-          roomId: videoCall.roomId
+          roomId: videoCall.roomId,
         });
 
-        logger.info(`User ${socket.userId} joined video call room ${videoCall.roomId}`);
-        socket.emit('call-joined', { 
+        logger.info(
+          `User ${socket.userId} joined video call room ${videoCall.roomId}`
+        );
+        socket.emit('call-joined', {
           roomId: videoCall.roomId,
           appointmentId: appointment.id,
-          videoCallId: videoCall.id
+          videoCallId: videoCall.id,
         });
       } catch (error) {
         logger.error('Error joining video call:', error);
