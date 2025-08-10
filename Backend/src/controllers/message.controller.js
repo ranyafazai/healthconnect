@@ -1,4 +1,5 @@
 import { prisma } from '../app.js';
+import socketConfig from '../config/socket.js';
 import { 
   successResponse, 
   errorResponse, 
@@ -123,6 +124,37 @@ class MessageController {
           file: true
         }
       });
+
+      // Emit real-time events to chat namespace so receivers get the message when
+      // it is created via REST (not only via socket 'send-message').
+      try {
+        const io = socketConfig.getIO();
+        const chatNs = io.of('/chat');
+        // Emit to receiver user room
+        chatNs.to(`user-${message.receiverId}`).emit('new-message', message);
+        // Emit to appointment room if applicable
+        if (message.appointmentId) {
+          chatNs
+            .to(`appointment-${message.appointmentId}`)
+            .emit('appointment-message', message);
+        }
+      } catch (emitErr) {
+        // Do not fail the request if socket is not initialized
+        console.error('Socket emit error (sendMessage REST):', emitErr);
+      }
+
+      // Optional: send push/notification if notification services are available
+      try {
+        if (global.notificationServices?.sendMessageNotification && content) {
+          await global.notificationServices.sendMessageNotification(
+            message.senderId,
+            message.receiverId,
+            content
+          );
+        }
+      } catch (notifyErr) {
+        console.error('Notification error (sendMessage REST):', notifyErr);
+      }
 
       return res.status(201).json(messageResponse(message, true));
     } catch (error) {
