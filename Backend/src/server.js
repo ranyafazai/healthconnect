@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// WebRTC configuration endpoint
+// Override WebRTC configuration endpoint with actual data
 app.get('/api/webrtc-config', (req, res) => {
   res.json({
     iceServers: webRTCConfig.iceServers,
@@ -72,7 +72,7 @@ app.get('/api/webrtc-config', (req, res) => {
   });
 });
 
-// Socket status endpoint
+// Override Socket status endpoint with actual data
 app.get('/api/socket-status', (req, res) => {
   const socketStatus = {
     chat: chatNamespace.connected ? Object.keys(chatNamespace.connected).length : 0,

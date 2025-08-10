@@ -28,7 +28,7 @@ export function Navbar() {
           <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors">Find Doctors</a>
           <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors">How It Works</a>
           <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors">About</a>
-          <Button className="bg-[#008CBA] hover:bg-[#007A9A] text-white px-6 py-2 rounded-full" onClick={() => navigate("/login")}>
+          <Button className="bg-[#008CBA] hover:bg-[#007A9A] text-white px-6 py-2 rounded-full" onClick={() => navigate("/signin")}>
             Sign In
           </Button>
         </div>
@@ -55,7 +55,7 @@ export function Navbar() {
             <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors py-2">Find Doctors</a>
             <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors py-2">How It Works</a>
             <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors py-2">About</a>
-            <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-2 rounded-full mt-4" onClick={() => navigate("/login")}>
+            <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-2 rounded-full mt-4" onClick={() => navigate("/signin")}>
               Sign In
             </Button>
           </div>
