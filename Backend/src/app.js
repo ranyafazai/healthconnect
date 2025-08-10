@@ -123,8 +123,28 @@ app.get("/api", (req, res) => {
       notifications: "/api/notifications",
       medicalRecords: "/api/medical-records",
       files: "/api/files",
-      videoCalls: "/api/video-calls"
+      videoCalls: "/api/video-calls",
+      webrtc: "/api/webrtc-config",
+      socketStatus: "/api/socket-status"
     }
+  });
+});
+
+// WebRTC configuration endpoint (will be populated by server.js)
+app.get('/api/webrtc-config', (req, res) => {
+  res.json({
+    iceServers: [],
+    iceCandidatePoolSize: 10
+  });
+});
+
+// Socket status endpoint (will be populated by server.js)
+app.get('/api/socket-status', (req, res) => {
+  res.json({
+    chat: 0,
+    videoCall: 0,
+    notifications: 0,
+    total: 0
   });
 });
 

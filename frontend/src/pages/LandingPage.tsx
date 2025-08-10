@@ -11,8 +11,8 @@ function LandingPage() {
       <Navbar />
       <Routes>
         <Route path="" element={<AllHero />} />
-        <Route path="login" element={<SignIn />} />
-        <Route path="register" element={<SignUp />} />
+        <Route path="signin" element={<SignIn />} />
+        <Route path="signup" element={<SignUp />} />
         <Route path="about" element={<div>About Us</div>} />
         <Route path="contact" element={<div>Contact Us</div>} />
         <Route path="*" element={<NotFound />} />

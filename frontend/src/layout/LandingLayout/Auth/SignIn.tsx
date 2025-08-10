@@ -1,4 +1,3 @@
-import React from "react";
 import AuthLayout from "./AuthLayout";
 import AuthForm from "../../../components/authComponent/AuthForm";
 
