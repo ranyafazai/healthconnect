@@ -130,14 +130,16 @@ class MessageController {
       try {
         const io = socketConfig.getIO();
         const chatNs = io.of('/chat');
-        // Emit to receiver user room
+        
+        // Emit to receiver's personal room
         chatNs.to(`user-${message.receiverId}`).emit('new-message', message);
+        
         // Emit to appointment room if applicable
         if (message.appointmentId) {
-          chatNs
-            .to(`appointment-${message.appointmentId}`)
-            .emit('appointment-message', message);
+          chatNs.to(`appointment-${message.appointmentId}`).emit('appointment-message', message);
         }
+        
+        logger.info(`Message emitted via REST: ${message.id} from ${message.senderId} to ${message.receiverId}`);
       } catch (emitErr) {
         // Do not fail the request if socket is not initialized
         console.error('Socket emit error (sendMessage REST):', emitErr);

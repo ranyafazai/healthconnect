@@ -105,12 +105,12 @@ export default function registerChatSocket(io) {
           }
         });
 
-        // Emit to receiver
-        socket.to(`user-${receiverId}`).emit('new-message', message);
+        // Emit to receiver's personal room
+        chatNamespace.to(`user-${receiverId}`).emit('new-message', message);
         
         // Emit to appointment room if applicable
         if (appointmentId) {
-          socket.to(`appointment-${appointmentId}`).emit('appointment-message', message);
+          chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-message', message);
         }
 
         // Send confirmation to sender
@@ -132,7 +132,7 @@ export default function registerChatSocket(io) {
         });
 
         // Notify sender that message was read
-        socket.to(`user-${message.senderId}`).emit('message-read', {
+        chatNamespace.to(`user-${message.senderId}`).emit('message-read', {
           messageId: parseInt(messageId),
           readBy: socket.userId
         });
@@ -148,13 +148,13 @@ export default function registerChatSocket(io) {
     socket.on('typing-start', (data) => {
       const { receiverId, appointmentId } = data;
       
-      socket.to(`user-${receiverId}`).emit('user-typing', {
+      chatNamespace.to(`user-${receiverId}`).emit('user-typing', {
         userId: socket.userId,
         isTyping: true
       });
 
       if (appointmentId) {
-        socket.to(`appointment-${appointmentId}`).emit('appointment-typing', {
+        chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-typing', {
           userId: socket.userId,
           isTyping: true
         });
@@ -164,13 +164,13 @@ export default function registerChatSocket(io) {
     socket.on('typing-stop', (data) => {
       const { receiverId, appointmentId } = data;
       
-      socket.to(`user-${receiverId}`).emit('user-typing', {
+      chatNamespace.to(`user-${receiverId}`).emit('user-typing', {
         userId: socket.userId,
         isTyping: false
       });
 
       if (appointmentId) {
-        socket.to(`appointment-${appointmentId}`).emit('appointment-typing', {
+        chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-typing', {
           userId: socket.userId,
           isTyping: false
         });

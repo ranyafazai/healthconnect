@@ -1,4 +1,5 @@
 import { prisma } from '../app.js';
+import socketConfig from '../config/socket.js';
 import { 
   successResponse, 
   errorResponse, 
@@ -230,6 +231,18 @@ class AppointmentController {
           content: `Your appointment with Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName} has been ${status.toLowerCase()}`
         }
       });
+
+      // Emit real-time notification to patient via socket
+      try {
+        const io = socketConfig.getIO();
+        const notificationNs = io.of('/notifications');
+        notificationNs.to(`user-${appointment.patient.userId}`).emit('new-notification', {
+          type: 'APPOINTMENT',
+          content: `Your appointment with Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName} has been ${status.toLowerCase()}`
+        });
+      } catch (emitErr) {
+        console.error('Socket emit error (appointment status update):', emitErr);
+      }
 
       return res.json(appointmentResponse(appointment, true));
     } catch (error) {

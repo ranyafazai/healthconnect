@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
-import { connectChat, disconnectChat, fetchConversation, selectChat, sendTextMessage } from '../../Redux/chatSlice/chatSlice';
+import { connectChat, disconnectChat, fetchConversation, sendTextMessage, fetchAppointmentMessages, clearMessages, joinAppointmentRoom } from '../../Redux/chatSlice/chatSlice';
 import VideoCall from '../../components/chat/VideoCall';
 import AudioCall from '../../components/chat/AudioCall';
 import { useConversations } from '../../hooks/useConversations';
@@ -12,7 +12,7 @@ import { Phone, Video, MessageSquare, Clock, History, Calendar } from 'lucide-re
 const Messages: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
-  const { selectedId: chatSelectedId } = useAppSelector((state: RootState) => state.chat);
+  const { messages, loadingMessages } = useAppSelector((state: RootState) => state.chat);
   
   const { 
     conversations, 
@@ -20,7 +20,6 @@ const Messages: React.FC = () => {
     error,
     getUpcomingConversations,
     getPastConversations,
-    getActiveConversations,
     canStartVideoCall,
     markConversationAsRead 
   } = useConversations();
@@ -30,18 +29,57 @@ const Messages: React.FC = () => {
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false);
   const [currentAppointmentId, setCurrentAppointmentId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  
+  // Ref for messages container to enable auto-scroll
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Connect to chat when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      console.log('🔌 Connecting to chat for user:', user.id);
+      dispatch(connectChat(user.id));
+    }
+
+    // Cleanup: disconnect from chat when component unmounts
+    return () => {
+      console.log('🔌 Disconnecting from chat');
+      dispatch(disconnectChat());
+    };
+  }, [dispatch, user?.id]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    console.log('📱 Patient messages updated, count:', messages.length);
+    if (messages.length > 0) {
+      console.log('📱 Patient auto-scrolling to bottom');
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const handleSelectConversation = (conversationId: number) => {
     console.log('💬 Patient selected conversation:', conversationId);
     setSelectedId(conversationId);
     markConversationAsRead(conversationId);
     
+    // Clear previous messages first
+    dispatch(clearMessages());
+    
     // Find the conversation to get appointment details
     const conversation = conversations.find(conv => conv.id === conversationId);
     console.log('🔍 Found conversation:', conversation);
+    
     if (conversation?.appointmentId) {
       setCurrentAppointmentId(conversation.appointmentId);
       console.log('📅 Set current appointment ID:', conversation.appointmentId);
+      
+      // Join appointment room for real-time messaging
+      joinAppointmentRoom(conversation.appointmentId);
+      
+      // Fetch messages for this appointment
+      dispatch(fetchAppointmentMessages(conversation.appointmentId));
+    } else if (conversation?.otherUserId) {
+      // For non-appointment conversations, fetch by user ID
+      dispatch(fetchConversation(conversation.otherUserId));
     }
   };
 
@@ -260,7 +298,16 @@ const Messages: React.FC = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto">
-              <MessageList items={[]} currentUserId={user?.id || 0} />
+              {loadingMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">Loading messages...</div>
+                </div>
+              ) : (
+                <>
+                  <MessageList items={messages} currentUserId={user?.id || 0} />
+                  <div ref={messagesEndRef} /> {/* Scroll anchor */}
+                </>
+              )}
             </div>
 
             {/* Message Input */}
@@ -275,6 +322,17 @@ const Messages: React.FC = () => {
                     content,
                     timestamp: new Date().toISOString()
                   });
+                  
+                  if (selectedId && currentAppointmentId) {
+                    const conversation = conversations.find(conv => conv.id === selectedId);
+                    if (conversation) {
+                      dispatch(sendTextMessage({
+                        receiverId: conversation.otherUserId,
+                        content,
+                        appointmentId: currentAppointmentId
+                      }));
+                    }
+                  }
                 }}
               />
             </div>
