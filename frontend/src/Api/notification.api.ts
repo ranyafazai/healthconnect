@@ -1,5 +1,5 @@
 import axios from '../lib/axios';
-import type { Notification } from '../types/notification';
+import type { Notification } from '../types/data/notification';
 
 export const getNotifications = () => 
   axios.get<{ data: Notification[] }>('/notifications');

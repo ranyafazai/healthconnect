@@ -6,7 +6,16 @@ export default async function (req, res, next) {
     const token = req.cookies?.token || (req.headers.authorization || '').replace('Bearer ', '');
     if (!token) return res.status(401).json({ message: 'Not authenticated' });
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.user.findUnique({ where: { id: payload.id } });
+    
+    // Fetch user with profile relationships
+    const user = await prisma.user.findUnique({ 
+      where: { id: payload.id },
+      include: {
+        patientProfile: true,
+        doctorProfile: true
+      }
+    });
+    
     if (!user) return res.status(401).json({ message: 'User not found' });
     const { password, ...safeUser } = user;
     req.user = safeUser;

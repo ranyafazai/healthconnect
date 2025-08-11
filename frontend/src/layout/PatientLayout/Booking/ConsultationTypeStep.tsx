@@ -2,16 +2,22 @@ import React, { useState } from 'react';
 import FullLine from './FullLine';
 import DoctorCard from './DoctorCard';
 import { BookingSummary } from './BookingSummary';
+import type { DoctorProfile } from '../../../types/data/doctor';
+import type { ConsultationType } from '../../../types/data/appointment';
 
 interface ConsultationTypeProps {
   onNext: () => void;
   onPrev: () => void;
-  bookingData: any;
-  updateBookingData: (data: any) => void;
+  bookingData: {
+    consultationType: 'TEXT' | 'VIDEO';
+    [key: string]: any;
+  };
+  updateBookingData: (data: { consultationType?: 'TEXT' | 'VIDEO'; [key: string]: any }) => void;
+  doctor?: DoctorProfile;
 }
 
-const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, bookingData, updateBookingData }) => {
-  const [selectedType, setSelectedType] = useState<'video' | 'chat'>(bookingData.consultationType || 'video');
+const ConsultationTypeStep: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, bookingData, updateBookingData, doctor }) => {
+  const [selectedType, setSelectedType] = useState<'TEXT' | 'VIDEO'>(bookingData.consultationType || 'VIDEO');
 
   const handleNext = () => {
     updateBookingData({ consultationType: selectedType });
@@ -21,7 +27,7 @@ const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, boo
   return (
     <div>
       {/* Doctor Card at the top */}
-      <DoctorCard />
+      <DoctorCard doctor={doctor} />
 
       <div style={{ 
         border: '2px solid #F8FCFF', 
@@ -57,44 +63,42 @@ const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, boo
           {/* Left column - Consultation Type Selection */}
           <div style={{ flex: 1 }}>
             <div style={{ 
-              display: 'flex', 
-              gap: '20px', 
-              justifyContent: 'center',
-              marginBottom: '30px',
-              flexWrap: 'wrap'
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              marginBottom: '30px'
             }}>
-                             {/* Video Call Card */}
-               <div 
-                 onClick={() => setSelectedType('video')}
-                 style={{ 
-                   width: '300px',
-                   padding: '25px',
-                   backgroundColor: '#FFFFFF',
-                   border: selectedType === 'video' ? '3px solid #008CBA' : '2px solid #E0E0E0',
-                   borderRadius: '10px',
-                   cursor: 'pointer',
-                   transition: 'all 0.3s ease',
-                   boxShadow: selectedType === 'video' ? '0 4px 8px rgba(69, 162, 158, 0.2)' : '0 2px 4px rgba(0,0,0,0.1)'
-                 }}
-               >
-                 <div style={{ 
-                   width: '60px', 
-                   height: '60px', 
-                   backgroundColor: '#008CBA', 
-                   borderRadius: '50%', 
-                   display: 'flex', 
-                   alignItems: 'center', 
-                   justifyContent: 'center',
-                   margin: '0 auto 15px auto'
-                 }}>
-                   <span style={{ fontSize: '24px', color: '#FFFFFF' }}>📹</span>
-                 </div>
+              {/* Video Consultation Option */}
+              <div 
+                onClick={() => setSelectedType('VIDEO')}
+                style={{
+                  border: selectedType === 'VIDEO' ? '3px solid #008CBA' : '2px solid #E0E0E0',
+                  borderRadius: '15px',
+                  padding: '25px',
+                  cursor: 'pointer',
+                  backgroundColor: selectedType === 'VIDEO' ? '#F0F8FF' : '#FFFFFF',
+                  transition: 'all 0.3s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  backgroundColor: selectedType === 'VIDEO' ? '#008CBA' : '#E0E0E0', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  margin: '0 auto 15px auto',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <span style={{ color: '#FFFFFF', fontSize: '24px' }}>📹</span>
+                </div>
                 
                 <h4 style={{ 
                   fontSize: '18px', 
                   fontWeight: 'bold', 
                   color: '#333', 
-                  textAlign: 'center',
                   marginBottom: '10px'
                 }}>
                   Video Call
@@ -102,11 +106,10 @@ const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, boo
                 
                 <p style={{ 
                   color: '#666', 
-                  textAlign: 'center',
-                  marginBottom: '15px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  marginBottom: '15px'
                 }}>
-                  Face-to-face consultation via secure video call
+                  Face-to-face consultation via video
                 </p>
                 
                 <ul style={{ 
@@ -116,55 +119,54 @@ const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, boo
                   fontSize: '14px',
                   color: '#666'
                 }}>
-                  <li style={{ marginBottom: '8px' }}>• HD video quality</li>
-                  <li style={{ marginBottom: '8px' }}>• Screen sharing available</li>
-                  <li style={{ marginBottom: '8px' }}>• Record consultation</li>
-                  <li style={{ marginBottom: '8px' }}>• Most popular option</li>
+                  <li style={{ marginBottom: '8px' }}>• Real-time interaction</li>
+                  <li style={{ marginBottom: '8px' }}>• Visual examination</li>
+                  <li style={{ marginBottom: '8px' }}>• Screen sharing</li>
+                  <li style={{ marginBottom: '8px' }}>• Personal connection</li>
                 </ul>
               </div>
 
-              {/* Text Chat Card */}
+              {/* Text Chat Option */}
               <div 
-                onClick={() => setSelectedType('chat')}
-                style={{ 
-                  width: '300px',
+                onClick={() => setSelectedType('TEXT')}
+                style={{
+                  border: selectedType === 'TEXT' ? '3px solid #008CBA' : '2px solid #E0E0E0',
+                  borderRadius: '15px',
                   padding: '25px',
-                  backgroundColor: '#FFFFFF',
-                  border: selectedType === 'chat' ? '3px solid #008CBA' : '2px solid #E0E0E0',
-                  borderRadius: '10px',
                   cursor: 'pointer',
+                  backgroundColor: selectedType === 'TEXT' ? '#F0F8FF' : '#FFFFFF',
                   transition: 'all 0.3s ease',
-                  boxShadow: selectedType === 'chat' ? '0 4px 8px rgba(0,123,255,0.2)' : '0 2px 4px rgba(0,0,0,0.1)'
+                  textAlign: 'center'
                 }}
               >
                 <div style={{ 
                   width: '60px', 
                   height: '60px', 
-                  backgroundColor: '#008CBA', 
+                  backgroundColor: selectedType === 'TEXT' ? '#008CBA' : '#E0E0E0', 
                   borderRadius: '50%', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  margin: '0 auto 15px auto'
+                  margin: '0 auto 15px auto',
+                  transition: 'all 0.3s ease'
                 }}>
-                  <span style={{ fontSize: '24px', color: '#FFFFFF' }}>💬</span>
+                  <span style={{ color: '#FFFFFF', fontSize: '24px' }}>💬</span>
                 </div>
                 
                 <h4 style={{ 
                   fontSize: '18px', 
                   fontWeight: 'bold', 
                   color: '#333', 
-                  textAlign: 'center',
-                  marginBottom: '10px'
+                  marginBottom: '10px',
+                  textAlign: 'center'
                 }}>
                   Text Chat
                 </h4>
                 
                 <p style={{ 
                   color: '#666', 
-                  textAlign: 'center',
-                  marginBottom: '15px',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  marginBottom: '15px'
                 }}>
                   Written consultation via secure messaging
                 </p>
@@ -252,4 +254,4 @@ const ConsultationType: React.FC<ConsultationTypeProps> = ({ onNext, onPrev, boo
   );
 };
 
-export default ConsultationType;
+export default ConsultationTypeStep;

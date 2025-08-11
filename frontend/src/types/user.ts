@@ -2,6 +2,8 @@ export interface UserLite {
   id: number;
   email: string;
   role: 'DOCTOR' | 'PATIENT';
+  doctorProfile?: DoctorProfile;
+  patientProfile?: PatientProfile;
 }
 
 import type { DoctorProfile } from './data/doctor';

@@ -1,6 +1,6 @@
 import type { DoctorProfile } from './doctor';
 import type { PatientProfile } from './patient';
-import type { Message } from '../state/message';
+import type { Message } from './message';
 import type { File } from './file';
 
 export const AppointmentStatus = {
@@ -23,13 +23,13 @@ export interface Appointment {
   id: number;
   doctorId: number;
   patientId: number;
-  date: Date;
+  date: Date | string;
   status: AppointmentStatus;
   type: ConsultationType;
   reason?: string;
   notes?: string;
   recordingId?: number;
-  createdAt: Date;
+  createdAt: Date | string;
   
   doctor?: DoctorProfile;
   patient?: PatientProfile;

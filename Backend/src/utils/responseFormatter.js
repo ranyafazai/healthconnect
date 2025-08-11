@@ -188,21 +188,29 @@ export const appointmentResponse = (appointment, includeDetails = false) => {
 export const doctorResponse = (doctor, includeDetails = false) => {
   const baseData = {
     id: doctor.id,
+    userId: doctor.userId,
     firstName: doctor.firstName,
     lastName: doctor.lastName,
     specialization: doctor.specialization,
     yearsExperience: doctor.yearsExperience,
+    medicalLicense: doctor.medicalLicense,
+    officeAddress: doctor.officeAddress,
+    city: doctor.city,
+    state: doctor.state,
+    zipCode: doctor.zipCode,
+    phoneNumber: doctor.phoneNumber,
+    emergencyContact: doctor.emergencyContact,
+    availability: doctor.availability,
     avgReview: doctor.avgReview,
-    photo: doctor.photo
+    photo: doctor.photo,
+    user: doctor.user
   };
 
   if (includeDetails) {
     baseData.professionalBio = doctor.professionalBio;
-    baseData.officeAddress = doctor.officeAddress;
-    baseData.phoneNumber = doctor.phoneNumber;
-    baseData.availability = doctor.availability;
     baseData.certifications = doctor.certifications;
     baseData.reviews = doctor.reviews;
+    baseData.user = doctor.user;
   }
 
   return successResponse(baseData, 'Doctor retrieved successfully');

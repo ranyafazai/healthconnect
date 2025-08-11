@@ -1,5 +1,5 @@
 import axios from '../lib/axios';
-import type { PatientProfile } from '../types/patient';
+import type { PatientProfile } from '../types/data/patient';
 
 export const getPatientById = (id: number) => 
   axios.get<{ data: PatientProfile }>(`/patients/${id}`);

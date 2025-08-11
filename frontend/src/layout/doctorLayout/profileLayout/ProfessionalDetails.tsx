@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
+import { fetchUserProfile, updateUserProfile } from "../../../Redux/userSlice/userSlice";
+import type { RootState } from "../../../Redux/store";
 
 interface Certification {
   id: number;
@@ -9,42 +12,88 @@ interface Certification {
 }
 
 export default function ProfessionalDetails() {
+  const dispatch = useAppDispatch();
+  const { profile, loading } = useAppSelector((state: RootState) => state.user);
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  
   const [specialization, setSpecialization] = useState("Internal Medicine");
   const [experience, setExperience] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [certifications, setCertifications] = useState<Certification[]>([
-    {
-      id: 1,
-      title: "Doctor of Medicine (MD)",
-      institution: "Harvard Medical School",
-      year: "2008",
-    },
-    {
-      id: 2,
-      title: "Board Certification - Internal Medicine",
-      institution: "American Board of Internal Medicine",
-      year: "2012",
-    },
-  ]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
 
-  const handleSubmit = (e: FormEvent) => {
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, user?.id]);
+
+  useEffect(() => {
+    if (profile?.doctorProfile) {
+      setSpecialization(profile.doctorProfile.specialization || "Internal Medicine");
+      setExperience(profile.doctorProfile.yearsExperience?.toString() || "");
+      setLicenseNumber(profile.doctorProfile.medicalLicense || "");
+      
+      if (profile.doctorProfile.certifications) {
+        setCertifications(profile.doctorProfile.certifications.map(cert => ({
+          id: cert.id,
+          title: cert.title,
+          institution: cert.institution,
+          year: cert.year.toString()
+        })));
+      }
+    }
+  }, [profile]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log({
-      specialization,
-      experience,
-      licenseNumber,
-      certifications,
-    });
+    if (!profile) return;
+
+    setIsSubmitting(true);
+    try {
+      const updateData = {
+        doctorProfile: {
+          specialization,
+          yearsExperience: parseInt(experience) || 0,
+          medicalLicense: licenseNumber,
+        }
+      };
+      
+      await dispatch(updateUserProfile(updateData)).unwrap();
+      // Refresh profile data
+      dispatch(fetchUserProfile());
+    } catch (error) {
+      console.error('Failed to update professional details:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEdit = (id: number) => {
+    // TODO: Implement edit certification modal/form
     alert(`Edit certification with id: ${id}`);
   };
 
   const handleAdd = () => {
+    // TODO: Implement add certification modal/form
     alert("Open add certification modal/form");
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -64,11 +113,18 @@ export default function ProfessionalDetails() {
             className="w-full border border-gray-300 rounded-md p-2"
             value={specialization}
             onChange={(e) => setSpecialization(e.target.value)}
+            required
           >
             <option value="Internal Medicine">Internal Medicine</option>
             <option value="Pediatrics">Pediatrics</option>
             <option value="Surgery">Surgery</option>
             <option value="Psychiatry">Psychiatry</option>
+            <option value="Cardiology">Cardiology</option>
+            <option value="Dermatology">Dermatology</option>
+            <option value="Neurology">Neurology</option>
+            <option value="Orthopedics">Orthopedics</option>
+            <option value="Oncology">Oncology</option>
+            <option value="Emergency Medicine">Emergency Medicine</option>
           </select>
         </div>
 
@@ -81,6 +137,9 @@ export default function ProfessionalDetails() {
             className="w-full border border-gray-300 rounded-md p-2"
             value={experience}
             onChange={(e) => setExperience(e.target.value)}
+            min="0"
+            max="50"
+            required
           />
         </div>
       </div>
@@ -95,6 +154,7 @@ export default function ProfessionalDetails() {
           className="w-full border border-gray-300 rounded-md p-2"
           value={licenseNumber}
           onChange={(e) => setLicenseNumber(e.target.value)}
+          required
         />
       </div>
 
@@ -103,26 +163,30 @@ export default function ProfessionalDetails() {
         <h3 className="font-semibold text-sm mb-4">Certifications & Education</h3>
 
         <div className="flex flex-col gap-3 mb-4">
-          {certifications.map((cert) => (
-            <div
-              key={cert.id}
-              className="bg-white border border-gray-200 rounded-md p-3 flex justify-between items-center"
-            >
-              <div>
-                <p className="font-medium">{cert.title}</p>
-                <p className="text-sm text-gray-500">
-                  {cert.institution} • {cert.year}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(cert.id)}
-                className="text-cyan-600 text-sm hover:underline"
+          {certifications.length > 0 ? (
+            certifications.map((cert) => (
+              <div
+                key={cert.id}
+                className="bg-white border border-gray-200 rounded-md p-3 flex justify-between items-center"
               >
-                Edit
-              </button>
-            </div>
-          ))}
+                <div>
+                  <p className="font-medium">{cert.title}</p>
+                  <p className="text-sm text-gray-500">
+                    {cert.institution} • {cert.year}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleEdit(cert.id)}
+                  className="text-cyan-600 text-sm hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm">No certifications added yet.</p>
+          )}
         </div>
 
         <button
@@ -144,9 +208,10 @@ export default function ProfessionalDetails() {
         </button>
         <button
           type="submit"
-          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700"
+          disabled={isSubmitting}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save Changes
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </form>

@@ -1,24 +1,90 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
+import { fetchUserProfile, updateUserProfile, uploadProfilePhoto } from "../../../Redux/userSlice/userSlice";
+import type { RootState } from "../../../Redux/store";
 
 export default function BasicInfo() {
+  const dispatch = useAppDispatch();
+  const { profile, loading } = useAppSelector((state: RootState) => state.user);
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  
   const [photo, setPhoto] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [bio, setBio] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePhotoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, user?.id]);
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.doctorProfile?.firstName || "");
+      setLastName(profile.doctorProfile?.lastName || "");
+      setBio(profile.doctorProfile?.professionalBio || "");
+      if (profile.files && profile.files.length > 0) {
+        const photoFile = profile.files.find(file => file.type === 'PHOTO');
+        if (photoFile) {
+          setPhoto(photoFile.url);
+        }
+      }
+    }
+  }, [profile]);
+
+  const handlePhotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhoto(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        const result = await dispatch(uploadProfilePhoto(file)).unwrap();
+        if (result) {
+          setPhoto(result);
+        }
+      } catch (error) {
+        console.error('Failed to upload photo:', error);
+      }
     }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log({ firstName, lastName, bio, photo });
+    if (!profile) return;
+
+    setIsSubmitting(true);
+    try {
+      const updateData = {
+        doctorProfile: {
+          firstName,
+          lastName,
+          professionalBio: bio,
+        }
+      };
+      
+      await dispatch(updateUserProfile(updateData)).unwrap();
+      // Refresh profile data
+      dispatch(fetchUserProfile());
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -38,7 +104,7 @@ export default function BasicInfo() {
                 className="rounded-full w-24 h-24 object-cover"
               />
             ) : (
-              <span>Photo</span>
+              <span>{firstName ? firstName.charAt(0) : lastName ? lastName.charAt(0) : 'D'}</span>
             )}
           </div>
           <label className="block">
@@ -66,6 +132,7 @@ export default function BasicInfo() {
                 className="w-full border border-gray-300 rounded-md p-2"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                required
               />
             </div>
             <div>
@@ -77,6 +144,7 @@ export default function BasicInfo() {
                 className="w-full border border-gray-300 rounded-md p-2"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                required
               />
             </div>
           </div>
@@ -90,9 +158,10 @@ export default function BasicInfo() {
               className="w-full border border-gray-300 rounded-md p-2"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
+              placeholder="Describe your professional background, expertise, and approach to patient care"
             />
             <p className="text-xs text-gray-500 mt-1">
-              This will be displayed on your public profile
+              This will be displayed on your public profile for patients to see
             </p>
           </div>
         </div>
@@ -108,9 +177,10 @@ export default function BasicInfo() {
         </button>
         <button
           type="submit"
-          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700"
+          disabled={isSubmitting}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save Changes
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </form>

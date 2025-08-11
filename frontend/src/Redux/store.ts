@@ -30,10 +30,22 @@ export const store = configureStore({
     }),
 });
 
+// Debug store initialization
+console.log('Redux store initialized with initial state:', store.getState());
+console.log('Redux store appointment state:', store.getState().appointment);
+console.log('Redux store chat state:', store.getState().chat);
+
 // Subscribe to store changes and save auth state to localStorage
 store.subscribe(() => {
   const state = store.getState();
   saveStateToStorage(state.auth);
+  
+  // Debug store changes
+  console.log('Redux store state changed:', {
+    appointment: state.appointment,
+    chat: state.chat,
+    auth: state.auth
+  });
 });
 
 export type RootState = ReturnType<typeof store.getState>;

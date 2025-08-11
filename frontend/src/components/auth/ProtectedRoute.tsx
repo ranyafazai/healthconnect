@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { hasPermission, getProtectedRouteProps } from '../../lib/permissions';
 
@@ -15,13 +15,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredPermissions = [],
   requiredRole,
-  fallbackPath = '/signin'
+  fallbackPath = '/auth/signin'
 }) => {
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state: RootState) => state.auth);
   const location = useLocation();
 
   // Check if user is authenticated
   if (!isAuthenticated || !user) {
+    console.log('ProtectedRoute: User not authenticated, redirecting to:', fallbackPath);
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
@@ -32,9 +33,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check permission requirements
   if (requiredPermissions.length > 0) {
+    console.log('ProtectedRoute: Checking permissions:', { requiredPermissions, user });
     const { isAuthorized, redirectTo } = getProtectedRouteProps(user, requiredPermissions);
+    console.log('ProtectedRoute: Permission check result:', { isAuthorized, redirectTo });
     
     if (!isAuthorized) {
+      console.log('ProtectedRoute: Permission check failed, redirecting to:', redirectTo || fallbackPath);
       return <Navigate to={redirectTo || fallbackPath} state={{ from: location }} replace />;
     }
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { fetchAppointments } from '../../Redux/appointmentSlice/appointmentSlice'; 
 import { useDataPermissions } from '../../hooks/useDataPermissions';
@@ -17,8 +17,8 @@ interface Appointment {
 }
 
 const ProtectedAppointmentsExample: React.FC = () => {
-  const dispatch = useDispatch();
-  const { appointments, loading, error } = useSelector((state: RootState) => state.appointment);
+  const dispatch = useAppDispatch();
+  const { appointments, loading, error } = useAppSelector((state: RootState) => state.appointment);
   const { user, canRead, canCreate, canUpdate, canDelete, filterData, isOwner } = useDataPermissions();
   
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);

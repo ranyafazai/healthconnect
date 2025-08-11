@@ -3,10 +3,6 @@ import Sidebarprofile from "./profileLayout/Sidebar.profile";
 import BasicInfo from "./profileLayout/BasicInfo";
 import ContactInfo from "./profileLayout/ContactInfo";
 
-// import BasicInfo from './BasicInfo';
-// import ContactInfo from './ContactInfo';
-// import ProfessionalDetails from './ProfessionalDetails';
-// import Availability from './Availability';
 
 export default function Profile() {
   return (

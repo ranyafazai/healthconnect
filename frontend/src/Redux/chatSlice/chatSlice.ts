@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Message, MessageType } from '../../types/message';
+import type { Message, MessageType } from '../../types/data/message';
 import { getConversation as apiGetConversation, sendMessage as apiSendMessage } from '../../Api/message.api';
 import { getSocket } from '../../lib/socket';
 
@@ -87,11 +87,11 @@ export const sendTextMessage = createAsyncThunk(
         id: Date.now(),
         senderId: Number(currentUserId),
         receiverId: payload.receiverId,
-        appointmentId: payload.appointmentId ?? null,
+        appointmentId: payload.appointmentId ?? undefined,
         content: payload.content,
         type: 'TEXT',
         isRead: false,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       };
       dispatch(addMessage(optimistic));
     }

@@ -25,6 +25,14 @@ export const fetchDoctorReviews = createAsyncThunk(
   }
 );
 
+export const fetchPatientReviews = createAsyncThunk(
+  'review/fetchPatientReviews',
+  async (patientId: number) => {
+    const response = await reviewApi.getPatientReviews(patientId);
+    return response.data?.data || [];
+  }
+);
+
 export const createReview = createAsyncThunk(
   'review/createReview',
   async (reviewData: {

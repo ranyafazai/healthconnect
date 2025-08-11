@@ -39,7 +39,6 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setAuth(state, action: PayloadAction<UserLite>) {
-      console.log('Redux: Setting auth state:', action.payload);
       state.isAuthenticated = true;
       state.user = action.payload;
       state.error = null;
@@ -97,7 +96,11 @@ export const checkAuthStatus = createAsyncThunk(
 // Save state to localStorage whenever it changes
 export const saveStateToStorage = (state: LocalAuthState) => {
   try {
-    const serializedState = JSON.stringify(state);
+    const stateWithTimestamp = {
+      ...state,
+      timestamp: Date.now()
+    };
+    const serializedState = JSON.stringify(stateWithTimestamp);
     localStorage.setItem('authState', serializedState);
   } catch (err) {
     // Ignore write errors

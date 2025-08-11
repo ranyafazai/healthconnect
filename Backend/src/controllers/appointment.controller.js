@@ -13,11 +13,14 @@ class AppointmentController {
   // Create a new appointment
   async createAppointment(req, res) {
     try {
-      const { doctorId, patientId, date, type, reason, notes } = req.body;
+      const { doctorId, date, type, reason, notes } = req.body;
+
+      // Get patientId from authenticated user's profile
+      const patientId = req.user.patientProfile?.id;
 
       // Validate required fields
       if (!doctorId || !patientId || !date || !type) {
-        return res.status(400).json(errorResponse('Missing required fields: doctorId, patientId, date, type', 400));
+        return res.status(400).json(errorResponse('Missing required fields: doctorId, date, type. Patient profile not found.', 400));
       }
 
       // Validate consultation type
@@ -25,10 +28,21 @@ class AppointmentController {
         return res.status(400).json(errorResponse('Invalid consultation type. Must be TEXT or VIDEO', 400));
       }
 
+      // Validate and parse the date
+      let parsedDate;
+      try {
+        parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          return res.status(400).json(errorResponse('Invalid date format provided', 400));
+        }
+      } catch (dateError) {
+        return res.status(400).json(errorResponse('Invalid date format provided', 400));
+      }
+
       const appointmentData = {
         doctorId: parseInt(doctorId),
         patientId: parseInt(patientId),
-        date,
+        date: parsedDate,
         type,
         reason: reason || null,
         notes: notes || null
@@ -38,7 +52,7 @@ class AppointmentController {
         data: {
           doctorId: appointmentData.doctorId,
           patientId: appointmentData.patientId,
-          date: new Date(appointmentData.date),
+          date: appointmentData.date,
           status: 'PENDING',
           type: appointmentData.type,
           reason: appointmentData.reason,
@@ -122,6 +136,11 @@ class AppointmentController {
       const appointments = await prisma.appointment.findMany({
         where: { doctorId: parseInt(doctorId) },
         include: {
+          doctor: {
+            include: {
+              user: true
+            }
+          },
           patient: {
             include: {
               user: true

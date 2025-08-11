@@ -14,6 +14,7 @@ export interface File {
   type: FileType;
   name: string;
   path: string;
+  url?: string; // Backend returns this field
   mimeType: string;
   size: number;
   createdAt: Date;
