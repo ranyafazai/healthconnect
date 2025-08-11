@@ -1,173 +1,318 @@
-import { useEffect } from 'react';
-import MessageList from '../../components/chat/MessageList';
-import MessageInput from '../../components/chat/MessageInput';
+import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
-import { Phone, Video, Clock3, Search, User, Stethoscope } from 'lucide-react';
-import { connectChat, disconnectChat, fetchConversation, selectChat, selectConversation, sendTextMessage } from '../../Redux/chatSlice/chatSlice';
-import { fetchDoctorDashboard } from '../../Redux/doctorSlice/doctorSlice';
+import { connectChat, disconnectChat, fetchConversation, selectChat, sendTextMessage } from '../../Redux/chatSlice/chatSlice';
+import VideoCall from '../../components/chat/VideoCall';
+import AudioCall from '../../components/chat/AudioCall';
+import { useConversations } from '../../hooks/useConversations';
+import MessageList from '../../components/chat/MessageList';
+import MessageInput from '../../components/chat/MessageInput';
+import { Phone, Video, MessageSquare, Clock, History, Calendar } from 'lucide-react';
 
-export default function Messages() {
+const Messages: React.FC = () => {
   const dispatch = useAppDispatch();
-  const auth = useAppSelector((s: RootState) => s.auth);
-  const currentUserId = auth.user?.id ?? null;
-  const chat = useAppSelector(selectChat);
-  const { conversations, selectedId, messages } = chat;
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  const { selectedId: chatSelectedId } = useAppSelector((state: RootState) => state.chat);
+  
+  const { 
+    conversations, 
+    loading, 
+    error,
+    getUpcomingConversations,
+    getPastConversations,
+    getActiveConversations,
+    canStartVideoCall,
+    markConversationAsRead 
+  } = useConversations();
 
-  // Connect to chat socket
-  useEffect(() => {
-    if (!currentUserId) return;
-    dispatch(connectChat(Number(currentUserId)));
-    return () => {
-      dispatch(disconnectChat());
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const [isAudioCallOpen, setIsAudioCallOpen] = useState(false);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+
+  const handleSelectConversation = (conversationId: number) => {
+    console.log('💬 Doctor selected conversation:', conversationId);
+    setSelectedId(conversationId);
+    markConversationAsRead(conversationId);
+    
+    // Find the conversation to get appointment details
+    const conversation = conversations.find(conv => conv.id === conversationId);
+    console.log('🔍 Found conversation:', conversation);
+    if (conversation?.appointmentId) {
+      setCurrentAppointmentId(conversation.appointmentId);
+      console.log('📅 Set current appointment ID:', conversation.appointmentId);
+    }
+  };
+
+  const handleVideoCall = () => {
+    console.log('🎥 Doctor video call button clicked');
+    if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
+      console.log('✅ Starting video call for doctor');
+      setIsVideoCallOpen(true);
+    } else {
+      console.log('❌ Cannot start video call - conditions not met');
+    }
+  };
+
+  const handleAudioCall = () => {
+    console.log('📞 Doctor audio call button clicked');
+    if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
+      console.log('✅ Starting audio call for doctor');
+      setIsAudioCallOpen(true);
+    } else {
+      console.log('❌ Cannot start audio call - conditions not met');
+    }
+  };
+
+  const getFilteredConversations = () => {
+    switch (activeTab) {
+      case 'upcoming':
+        return getUpcomingConversations();
+      case 'past':
+        return getPastConversations();
+      default:
+        return conversations;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      'UPCOMING': { color: 'bg-blue-100 text-blue-800', icon: Calendar },
+      'ACTIVE': { color: 'bg-green-100 text-green-800', icon: Clock },
+      'PAST': { color: 'bg-gray-100 text-gray-800', icon: History }
     };
-  }, [dispatch, currentUserId]);
+    
+    const config = statusConfig[status as keyof typeof statusConfig];
+    if (!config) return null;
+    
+    const Icon = config.icon;
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        <Icon size={12} />
+        {status}
+      </span>
+    );
+  };
 
-  // Load conversation on selection
-  useEffect(() => {
-    if (!selectedId) return;
-    dispatch(fetchConversation(selectedId));
-    // Refresh dashboard data to update unread message count
-    if (auth.user?.doctorProfile?.id) {
-      dispatch(fetchDoctorDashboard());
+  const getTypeIcon = (type: string, appointmentType?: string) => {
+    if (type === 'DOCTOR_TO_DOCTOR') {
+      return <MessageSquare size={16} className="text-blue-500" />;
     }
-  }, [dispatch, selectedId, auth.user?.doctorProfile?.id]);
-
-  function handleSend(content: string) {
-    if (!selectedId) return;
-    dispatch(sendTextMessage({ receiverId: selectedId, content }));
-    // Refresh dashboard data to update unread message count
-    if (auth.user?.doctorProfile?.id) {
-      dispatch(fetchDoctorDashboard());
+    
+    if (appointmentType === 'VIDEO') {
+      return <Video size={16} className="text-purple-500" />;
     }
-  }
+    
+    return <MessageSquare size={16} className="text-green-500" />;
+  };
 
   return (
-    <div className="flex h-full min-h-[600px] w-full bg-gray-100">
-      {/* Left sidebar */}
-      <aside className="flex w-72 flex-col border-r bg-white">
-        {/* Doctor header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-            {auth.user?.doctorProfile?.firstName?.charAt(0) || 'D'}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-gray-900">
-              Dr. {auth.user?.doctorProfile?.firstName} {auth.user?.doctorProfile?.lastName}
-            </div>
-            <div className="truncate text-xs text-gray-500">{auth.user?.doctorProfile?.specialization || 'Doctor'}</div>
-          </div>
+    <div className="flex h-full">
+      {/* Conversation List */}
+      <div className="w-80 border-r border-gray-200 bg-white">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
         </div>
 
-        {/* Search */}
-        <div className="px-4 pb-2 pt-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              placeholder="Search patients..."
-              className="w-full rounded-md border px-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('upcoming')}
+            className={`flex-1 px-4 py-2 text-sm font-medium ${
+              activeTab === 'upcoming'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Upcoming
+          </button>
+          <button
+            onClick={() => setActiveTab('past')}
+            className={`flex-1 px-4 py-2 text-sm font-medium ${
+              activeTab === 'past'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Past
+          </button>
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 px-4 py-2 text-sm font-medium ${
+              activeTab === 'all'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            All
+          </button>
         </div>
 
-        <div className="px-4 pb-2 text-xs font-medium text-gray-700">Active Patients</div>
-
-        {/* Conversations list */}
-        <div className="flex-1 overflow-y-auto">
-          {conversations.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => dispatch(selectConversation(c.id))}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                selectedId === c.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-              }`}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100 text-sm font-semibold text-cyan-700">
-                {c.name.split(' ').map((s) => s[0]).join('').slice(0, 2)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-gray-900">{c.name}</div>
-                {c.lastMessage ? (
-                  <div className="truncate text-xs text-gray-500">{c.lastMessage}</div>
-                ) : (
-                  <div className="text-xs text-gray-400">No messages yet</div>
-                )}
-              </div>
-            </button>
-          ))}
-          
-          {conversations.length === 0 && (
-            <div className="px-4 py-8 text-center">
-              <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-500">No conversations yet</p>
-              <p className="text-xs text-gray-400">Start chatting with your patients</p>
+        {/* Conversations */}
+        <div className="overflow-y-auto h-96">
+          {loading ? (
+            <div className="p-4 text-center text-gray-500">Loading conversations...</div>
+          ) : error ? (
+            <div className="p-4 text-center text-red-500">{error}</div>
+          ) : getFilteredConversations().length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              {activeTab === 'upcoming' ? 'No upcoming conversations' : 
+               activeTab === 'past' ? 'No past conversations' : 'No conversations'}
             </div>
+          ) : (
+            getFilteredConversations().map((conversation) => (
+              <div
+                key={conversation.id}
+                onClick={() => handleSelectConversation(conversation.id)}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                  selectedId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {getTypeIcon(conversation.type, conversation.appointmentType)}
+                    <span className="font-medium text-gray-900">{conversation.name}</span>
+                  </div>
+                  {conversation.unreadCount > 0 && (
+                    <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
+                      {conversation.unreadCount}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600 truncate">
+                    {conversation.lastMessage || 'No messages yet'}
+                  </span>
+                  {conversation.lastMessageTime && (
+                    <span className="text-xs text-gray-400">
+                      {new Date(conversation.lastMessageTime).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  {getStatusBadge(conversation.status)}
+                  {conversation.appointmentDate && (
+                    <span className="text-xs text-gray-500">
+                      {new Date(conversation.appointmentDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </aside>
+      </div>
 
-      {/* Main panel */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col">
         {selectedId ? (
           <>
-            {/* Top header with patient details and actions */}
-            <div className="flex items-center justify-between border-b bg-white px-5 py-3">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-600 text-sm font-semibold text-white">
-                    {conversations.find((c) => c.id === selectedId)?.name.split(' ').map((s) => s[0]).join('').slice(0, 2) || 'PT'}
-                  </div>
-                  <span className="absolute -right-0 -bottom-0 block h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+            {/* Chat Header */}
+            <div className="p-4 border-b border-gray-200 bg-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {conversations.find(conv => conv.id === selectedId)?.name}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' 
+                      ? 'Appointment Conversation' 
+                      : 'Doctor Conversation'}
+                  </p>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-gray-900">
-                    {conversations.find((c) => c.id === selectedId)?.name || 'Select a chat'}
-                  </div>
-                  <div className="truncate text-xs text-gray-500">
-                    Patient • Last visit: 2 weeks ago
-                  </div>
+                
+                <div className="flex gap-2">
+                  {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' && (
+                    <>
+                      {(() => {
+                        const conversation = conversations.find(conv => conv.id === selectedId);
+                        const canCall = conversation && canStartVideoCall(conversation);
+                        console.log('🎥 Rendering call buttons for conversation:', conversation?.id, 'Can call:', canCall);
+                        return (
+                          <>
+                            <button
+                              onClick={handleAudioCall}
+                              disabled={!canCall}
+                              className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Audio Call"
+                            >
+                              <Phone size={20} />
+                            </button>
+                            <button
+                              onClick={handleVideoCall}
+                              disabled={!canCall}
+                              className="p-2 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Video Call"
+                            >
+                              <Video size={20} />
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-1">
-                <button className="rounded-full p-2 hover:bg-gray-100 transition-colors" aria-label="Audio call">
-                  <Phone className="h-4 w-4" />
-                </button>
-                <button className="rounded-full p-2 hover:bg-gray-100 transition-colors" aria-label="Video call">
-                  <Video className="h-4 w-4" />
-                </button>
-                <button className="rounded-full p-2 hover:bg-gray-100 transition-colors" aria-label="Patient History">
-                  <Clock3 className="h-4 w-4" />
-                </button>
-              </div>
             </div>
 
-            {/* Security banner */}
-            <div className="flex items-center gap-2 border-b bg-white/60 px-5 py-2 text-xs text-gray-600">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              <span>End-to-end encrypted</span>
-              <span>•</span>
-              <span>HIPAA compliant</span>
-              <span>•</span>
-              <span>Patient conversations are secure and private</span>
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto">
+              <MessageList items={[]} currentUserId={user?.id || 0} />
             </div>
 
-            {/* Messages area */}
-            <div className="flex-1 overflow-hidden">
-              <MessageList items={messages} currentUserId={currentUserId} />
+            {/* Message Input */}
+            <div className="p-4 border-t border-gray-200">
+              <MessageInput 
+                onSend={(content) => {
+                  // Handle sending message
+                  console.log('💬 Doctor sending message:', content);
+                  console.log('📝 Message details:', {
+                    conversationId: selectedId,
+                    appointmentId: currentAppointmentId,
+                    content,
+                    timestamp: new Date().toISOString()
+                  });
+                }}
+              />
             </div>
-            <MessageInput onSend={handleSend} />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Conversation</h3>
-              <p className="text-gray-500">Choose a patient from the list to start chatting</p>
+            <div className="text-center text-gray-500">
+              <MessageSquare size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">Select a conversation to start messaging</p>
+              <p className="text-sm">Choose from your upcoming or past appointments</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Video Call Modal */}
+      {isVideoCallOpen && currentAppointmentId && selectedId && (
+        <VideoCall
+          isOpen={isVideoCallOpen}
+          onClose={() => setIsVideoCallOpen(false)}
+          appointmentId={currentAppointmentId}
+          otherUserId={selectedId}
+          currentUserId={user?.id || 0}
+        />
+      )}
+
+      {/* Audio Call Modal */}
+      {isAudioCallOpen && currentAppointmentId && selectedId && (
+        <AudioCall
+          isOpen={isAudioCallOpen}
+          onClose={() => setIsAudioCallOpen(false)}
+          appointmentId={currentAppointmentId}
+          otherUserId={selectedId}
+          currentUserId={user?.id || 0}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default Messages;

@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../Redux/store';
 import { fetchAppointmentsByPatient, updateAppointmentStatus, deleteAppointment } from '../../Redux/appointmentSlice/appointmentSlice';
-import type { Appointment } from '../../types/data/appointment';
+import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -14,15 +14,9 @@ const Appointments: React.FC = () => {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
-    console.log('Patient Appointments useEffect - user:', user);
-    console.log('Patient Appointments useEffect - user?.patientProfile:', user?.patientProfile);
-    console.log('Patient Appointments useEffect - user?.patientProfile?.id:', user?.patientProfile?.id);
-    
     if (user?.patientProfile?.id) {
-      console.log('Dispatching fetchAppointmentsByPatient with ID:', user.patientProfile.id);
+      console.log('Fetching appointments for patient ID:', user.patientProfile.id);
       dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
-    } else {
-      console.warn('No patient profile ID found, cannot fetch appointments');
     }
   }, [dispatch, user?.patientProfile?.id]);
 
@@ -121,7 +115,7 @@ const Appointments: React.FC = () => {
     setCurrentDate(newDate);
   };
 
-  const handleStatusUpdate = async (appointmentId: number, newStatus: string) => {
+  const handleStatusUpdate = async (appointmentId: number, newStatus: AppointmentStatus) => {
     try {
       await dispatch(updateAppointmentStatus({ id: appointmentId, status: newStatus })).unwrap();
       

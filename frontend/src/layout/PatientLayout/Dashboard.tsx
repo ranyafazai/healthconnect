@@ -14,7 +14,7 @@ import type { RootState } from "../../Redux/store";
 import { fetchAppointmentsByPatient } from "../../Redux/appointmentSlice/appointmentSlice";
 import { fetchNotifications } from "../../Redux/notificationSlice/notificationSlice";
 import type { Appointment } from "../../types/data/appointment";
-import type { Message } from "../../types/message";
+import type { Message } from "../../types/data/message";
 
 export default function Dashboard() {
   const dispatch = useAppDispatch();

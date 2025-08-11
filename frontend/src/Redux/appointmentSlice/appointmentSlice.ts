@@ -31,7 +31,7 @@ export const fetchAppointments = createAsyncThunk(
   'appointment/fetchAppointments',
   async () => {
     const response = await appointmentApi.getAppointments();
-    return response.data.data || [];
+    return response.data;
   }
 );
 
@@ -39,7 +39,7 @@ export const fetchAppointmentsByDoctor = createAsyncThunk(
   'appointment/fetchAppointmentsByDoctor',
   async (doctorId: number) => {
     const response = await appointmentApi.getAppointmentsByDoctor(doctorId);
-    return response.data.data || [];
+    return response.data;
   }
 );
 
@@ -50,14 +50,14 @@ export const fetchAppointmentsByPatient = createAsyncThunk(
     console.log('fetchAppointmentsByPatient response:', response);
     console.log('fetchAppointmentsByPatient response.data:', response.data);
     console.log('fetchAppointmentsByPatient response.data.data:', response.data.data);
-    return response.data.data || [];
+    return response.data;
   }
 );
 
 export const createAppointment = createAsyncThunk(
   'appointment/createAppointment',
   async (appointmentData: Parameters<typeof appointmentApi.createAppointment>[0]) => {
-    const response = await appointmentApi.createAppointment(appointmentData);
+    const response =  await appointmentApi.createAppointment(appointmentData);
     return response.data;
   }
 );
@@ -134,7 +134,7 @@ const appointmentSlice = createSlice({
         console.log('fetchAppointments.fulfilled - action.payload:', action.payload);
         console.log('fetchAppointments.fulfilled - state before update:', { ...state });
         state.loading = false;
-        state.appointments = action.payload;
+        state.appointments = action.payload?.data || [];
         console.log('fetchAppointments.fulfilled - state after update:', { ...state });
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
@@ -155,7 +155,7 @@ const appointmentSlice = createSlice({
         console.log('fetchAppointmentsByDoctor.fulfilled - action.payload:', action.payload);
         console.log('fetchAppointmentsByDoctor.fulfilled - state before update:', { ...state });
         state.loading = false;
-        state.appointments = action.payload;
+        state.appointments = action.payload?.data || [];
         console.log('fetchAppointmentsByDoctor.fulfilled - state after update:', { ...state });
       })
       .addCase(fetchAppointmentsByDoctor.rejected, (state, action) => {
@@ -177,9 +177,9 @@ const appointmentSlice = createSlice({
         console.log('fetchAppointmentsByPatient.fulfilled - action.payload type:', typeof action.payload);
         console.log('fetchAppointmentsByPatient.fulfilled - state before update:', { ...state });
         state.loading = false;
-        state.appointments = action.payload;
+        state.appointments = action.payload?.data || [];
         console.log('fetchAppointmentsByPatient.fulfilled - state.appointments after update:', state.appointments);
-        console.log('fetchAppointmentsByPatient.fulfilled - state after update:', { ...state });
+        console.log('fetchAppointments.fulfilled - state after update:', { ...state });
       })
       .addCase(fetchAppointmentsByPatient.rejected, (state, action) => {
         console.log('fetchAppointmentsByPatient.rejected - error:', action.error);
@@ -220,10 +220,10 @@ const appointmentSlice = createSlice({
       .addCase(updateAppointmentStatus.fulfilled, (state, action) => {
         console.log('updateAppointmentStatus.fulfilled - action.payload:', action.payload);
         console.log('updateAppointmentStatus.fulfilled - state before update:', { ...state });
-        if (action.payload?.data) {
-          const index = state.appointments.findIndex(apt => apt.id === action.payload.data.id);
+        if (action.payload?.data?.data) {
+          const index = state.appointments.findIndex(apt => apt.id === action.payload.data.data.id);
           if (index !== -1) {
-            state.appointments[index] = action.payload.data;
+            state.appointments[index] = action.payload.data.data;
           }
         }
         console.log('updateAppointmentStatus.fulfilled - state after update:', { ...state });

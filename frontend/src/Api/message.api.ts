@@ -1,5 +1,5 @@
 import axios from '../lib/axios';
-import type { Message, MessageType } from '../types/message';
+import type { Message, MessageType } from '../types/data/message';
 
 export const getConversation = (userId: number) =>
   axios.get<{ data: Message[] }>(`/messages/conversation/${userId}`);

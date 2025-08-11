@@ -5,7 +5,7 @@ import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../Redux/hooks";
 import { login, register } from "../../Api/auth.api";
-import { setAuth } from "../../Redux/authSlice/authSlice";
+import { setAuth, checkAuthStatus } from "../../Redux/authSlice/authSlice";
 import type { UserLite } from "../../types/user";
 
 interface AuthFormProps {
@@ -90,17 +90,21 @@ export default function AuthForm({ type }: AuthFormProps) {
 
       // Extract user data from response
       const userData = response.data.user;
-      console.log('Login successful, user data:', userData);
+      console.log('Authentication successful, user data:', userData);
       
-      // Store user data in Redux
+      // Store basic user data in Redux first
       const user: UserLite = {
         id: userData.id,
         email: userData.email,
         role: userData.role
       };
       
-      console.log('Dispatching auth to Redux:', user);
+      console.log('Dispatching basic auth to Redux:', user);
       dispatch(setAuth(user));
+      
+      // Fetch full user data including profiles
+      console.log('Fetching full user data with profiles...');
+      await dispatch(checkAuthStatus()).unwrap();
       
       // Redirect based on user role
       if (user.role === 'DOCTOR') {

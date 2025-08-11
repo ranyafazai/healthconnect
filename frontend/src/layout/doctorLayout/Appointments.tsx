@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Filter, Search, Eye, Edit, Trash2, RefreshCw, TrendingUp, AlertCircle, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
 import type { RootState } from '../../Redux/store';
 import { fetchAppointmentsByDoctor, updateAppointmentStatus, deleteAppointment } from '../../Redux/appointmentSlice/appointmentSlice';
-import type { Appointment } from '../../types/data/appointment';
+import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -197,7 +197,7 @@ const Appointments: React.FC = () => {
     setCurrentDate(newDate);
   };
 
-  const handleStatusUpdate = async (appointmentId: number, newStatus: string) => {
+  const handleStatusUpdate = async (appointmentId: number, newStatus: AppointmentStatus) => {
     try {
       await dispatch(updateAppointmentStatus({ id: appointmentId, status: newStatus })).unwrap();
       
@@ -220,7 +220,7 @@ const Appointments: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
       case 'CONFIRMED':
         return 'bg-green-100 text-green-800 border-green-200';
