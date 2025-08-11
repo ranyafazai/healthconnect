@@ -1,21 +1,28 @@
-import axios from '../lib/axios';
-import type { Review } from '../types/data/review';
+import axiosInstance from '../lib/axios';
+import type { Review, ReviewsStats } from '../types/data/review';
 
-export const getDoctorReviews = (doctorId: number) => 
-  axios.get<{ data: Review[] }>(`/reviews/doctor/${doctorId}`);
+export const reviewApi = {
+  getDoctorReviews: async (doctorId: number): Promise<Review[]> => {
+    const response = await axiosInstance.get(`/api/reviews/doctor/${doctorId}`);
+    return response.data?.data ?? response.data;
+  },
 
-export const getPatientReviews = (patientId: number) => 
-  axios.get<{ data: Review[] }>(`/reviews/patient/${patientId}`);
+  getDoctorReviewStats: async (doctorId: number): Promise<ReviewsStats> => {
+    const response = await axiosInstance.get(`/api/reviews/doctor/${doctorId}/stats`);
+    return response.data?.data ?? response.data;
+  },
 
-export const createReview = (data: {
-  doctorId: number;
-  rating: number;
-  comment: string;
-  appointmentId?: number;
-}) => axios.post<{ data: Review }>('/reviews', data);
+  getPatientReviews: async (patientId: number): Promise<Review[]> => {
+    const response = await axiosInstance.get(`/api/reviews/patient/${patientId}`);
+    return response.data?.data ?? response.data;
+  },
 
-export const updateReview = (id: number, data: Partial<Review>) => 
-  axios.put<{ data: Review }>(`/reviews/${id}`, data);
+  createReview: async (reviewData: Partial<Review>): Promise<Review> => {
+    const response = await axiosInstance.post('/api/reviews', reviewData);
+    return response.data?.data ?? response.data;
+  },
 
-export const deleteReview = (id: number) => 
-  axios.delete(`/reviews/${id}`);
+  deleteReview: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/api/reviews/${id}`);
+  }
+};
