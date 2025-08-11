@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
+import { useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { hasPermission, canAccessResource } from '../../lib/permissions';
 
@@ -20,7 +20,7 @@ const PermissionGuard: React.FC<PermissionGuardProps> = ({
   fallback = null,
   showFallback = false
 }) => {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user } = useAppSelector((state: RootState) => state.auth);
 
   const hasAccess = resource 
     ? canAccessResource(user, resource, permission, resourceId)

@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ChangeEvent, FormEvent } from "react";
+import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
+import { fetchUserProfile, updateUserProfile } from "../../../Redux/userSlice/userSlice";
+import type { RootState } from "../../../Redux/store";
 
 interface ContactInfoForm {
   email: string;
@@ -12,6 +15,10 @@ interface ContactInfoForm {
 }
 
 export default function ContactInfo() {
+  const dispatch = useAppDispatch();
+  const { profile, loading } = useAppSelector((state: RootState) => state.user);
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  
   const [formData, setFormData] = useState<ContactInfoForm>({
     email: "",
     phone: "",
@@ -21,6 +28,27 @@ export default function ContactInfo() {
     zip: "",
     emergencyContact: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, user?.id]);
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        email: profile.email || "",
+        phone: profile.doctorProfile?.phoneNumber || "",
+        address: profile.doctorProfile?.officeAddress || "",
+        city: profile.doctorProfile?.city || "",
+        state: profile.doctorProfile?.state || "",
+        zip: profile.doctorProfile?.zipCode || "",
+        emergencyContact: profile.doctorProfile?.emergencyContact || "",
+      });
+    }
+  }, [profile]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,10 +58,48 @@ export default function ContactInfo() {
     }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("Submitting contact info:", formData);
+    if (!profile) return;
+
+    setIsSubmitting(true);
+    try {
+      const updateData = {
+        email: formData.email,
+        doctorProfile: {
+          phoneNumber: formData.phone,
+          officeAddress: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zip,
+          emergencyContact: formData.emergencyContact,
+        }
+      };
+      
+      await dispatch(updateUserProfile(updateData)).unwrap();
+      // Refresh profile data
+      dispatch(fetchUserProfile());
+    } catch (error) {
+      console.error('Failed to update contact info:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -145,9 +211,10 @@ export default function ContactInfo() {
         </button>
         <button
           type="submit"
-          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700"
+          disabled={isSubmitting}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Save Changes
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </form>

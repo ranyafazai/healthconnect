@@ -1,14 +1,9 @@
-import React from 'react';
-
-interface Review {
-  id: string;
-  patientName: string;
-  date: string;
-  title: string;
-  content: string;
-  tags: string[];
-  rating: number;
-}
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
+import { Star } from 'lucide-react';
+import type { RootState } from '../../Redux/store';
+import { fetchDoctorReviews } from '../../Redux/reviewSlice/reviewSlice';
+import type { Review } from '../../types/data/review';
 
 interface RatingDistribution {
   [key: number]: number;
@@ -23,73 +18,110 @@ interface PerformanceInsights {
 }
 
 const Reviews: React.FC = () => {
-  
-  const doctorProfile = {
-    name: "Dr. Sarah Johnson",
-    performanceInsights: {
-      ratingDistribution: {
-        1: 0,
-        2: 0,
-        3: 1,
-        4: 2,
-        5: 3
-      }  as RatingDistribution,
-      topFeedback: {
-        "Professional": ["Giving", "Thorough", "Clear Explanations"],
-        "Knowledgeable": ["On Time", "Good Listener", "Patient"]
-      },
-      strengths: [
-        "Patients consistently praise your professionalism, punctuality, and clear communication style."
-      ]
-    },
-    reviews: [
-      {
-        id: "1",
-        patientName: "Sarah M.",
-        date: "Jan 15, 2024",
-        title: "Excellent care and communication",
-        content: "Dr. Johnson was incredibly thorough and took time to explain everything. The appointment was on time and the staff was very professional.",
-        tags: ["Professional", "On Time", "Thorough", "Clear Explanations"],
-        rating: 5
-      }
-    ],
-    helpfulReviews: 12
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state: RootState) => state.auth);
+  const { reviews, loading } = useAppSelector((state: RootState) => state.review);
+
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchDoctorReviews(user.id));
+    }
+  }, [dispatch, user?.id]);
+
+  // Calculate rating distribution from real data
+  const ratingDistribution: RatingDistribution = {
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0
   };
 
+  reviews.forEach(review => {
+    ratingDistribution[review.rating] = (ratingDistribution[review.rating] || 0) + 1;
+  });
 
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0 
+    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(1)
+    : 0;
 
-const renderRatingDistribution = () => {
-  return [5, 4, 3, 2, 1].map((rating) => {
-    const count = doctorProfile.performanceInsights.ratingDistribution[rating];
-    
-    return (
-      <div key={rating} className="flex items-center justify-between mb-1">
-        <div className="w-16">{rating} ★</div>
-        <div className="flex-1 ml-4">
-          <div 
-            className="bg-gray-200 h-4 rounded-full"
-            style={{
-              width: `${(count / 
-                      Object.values(doctorProfile.performanceInsights.ratingDistribution).reduce((a, b) => a + b, 0)) * 100}%`
-            }}
-          ></div>
+  // Generate performance insights
+  const performanceInsights: PerformanceInsights = {
+    ratingDistribution,
+    topFeedback: {
+      "Professional": ["Thorough", "Clear Explanations", "On Time"],
+      "Knowledgeable": ["Good Listener", "Patient", "Expert"]
+    },
+    strengths: [
+      totalReviews > 0 
+        ? `You have received ${totalReviews} reviews with an average rating of ${averageRating} stars.`
+        : "No reviews yet. Continue providing excellent care to receive patient feedback."
+    ]
+  };
+
+  const renderRatingDistribution = () => {
+    return [5, 4, 3, 2, 1].map((rating) => {
+      const count = ratingDistribution[rating] || 0;
+      const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+      
+      return (
+        <div key={rating} className="flex items-center justify-between mb-1">
+          <div className="w-16 flex items-center gap-1">
+            <span>{rating}</span>
+            <Star className="text-yellow-400" size={12} />
+          </div>
+          <div className="flex-1 ml-4">
+            <div 
+              className="bg-gray-200 h-4 rounded-full"
+              style={{ width: `${percentage}%` }}
+            ></div>
+          </div>
+          <div className="w-8 text-right">
+            {count}  
+          </div>
         </div>
-        <div className="w-8 text-right">
-          {count}  
+      );
+    });
+  };
+
+  const formatDate = (dateString: string | Date) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-gray-500">Loading reviews...</div>
         </div>
       </div>
     );
-  });
-};
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-2">{doctorProfile.name}</h1>
+      <h1 className="text-2xl font-bold mb-2">Dr. {user?.email?.split('@')[0] || 'Doctor'}</h1>
       <h2 className="text-lg text-gray-600 mb-6">Patient Reviews & Ratings</h2>
 
-      
+      {/* Performance Overview */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Performance Insights</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Performance Overview</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-yellow-500">{averageRating}</span>
+            <div className="flex">
+              {[...Array(5)].map((_, i) => (
+                <Star 
+                  key={i} 
+                  className={`${i < Math.floor(Number(averageRating)) ? 'text-yellow-400' : 'text-gray-300'}`} 
+                  size={20} 
+                />
+              ))}
+            </div>
+            <span className="text-gray-600">({totalReviews} reviews)</span>
+          </div>
+        </div>
         
         <div className="flex flex-col md:flex-row gap-8">
           
@@ -98,13 +130,11 @@ const renderRatingDistribution = () => {
             {renderRatingDistribution()}
           </div>
 
-          
           <div className="hidden md:block border-l border-gray-200"></div>
 
-          
           <div className="md:w-2/3">
             <h3 className="font-medium mb-3">Top Patient Feedback</h3>
-            {Object.entries(doctorProfile.performanceInsights.topFeedback).map(([category, tags]) => (
+            {Object.entries(performanceInsights.topFeedback).map(([category, tags]) => (
               <div key={category} className="mb-4">
                 <strong className="text-gray-800">{category}</strong>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -121,58 +151,65 @@ const renderRatingDistribution = () => {
             ))}
 
             <div className="mt-6">
-              <h3 className="font-medium mb-2">Strengths identified</h3>
+              <h3 className="font-medium mb-2">Summary</h3>
               <p className="text-gray-700">
-                {doctorProfile.performanceInsights.strengths[0]}
+                {performanceInsights.strengths[0]}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      
+      {/* Reviews List */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Patient Reviews</h2>
           <div className="flex gap-4 text-sm">
-            <button className="text-cyan-600">All Ratings</button>
-            <button className="text-cyan-600">All Reviews</button>
-            <button className="text-cyan-600">Newest First</button>
+            <span className="text-gray-600">All Ratings</span>
+            <span className="text-gray-600">All Reviews</span>
+            <span className="text-gray-600">Newest First</span>
           </div>
         </div>
 
-        {doctorProfile.reviews.map((review) => (
-          <div key={review.id} className="border-b border-gray-200 pb-6 mb-6 last:border-0">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-medium">{review.patientName}</h3>
-                <p className="text-gray-500 text-sm">{review.date}</p>
-              </div>
-              <div className="flex">
-                {[...Array(review.rating)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">★</span>
-                ))}
-              </div>
-            </div>
-
-            <h4 className="text-lg font-semibold mt-2 mb-2">{review.title}</h4>
-            <p className="text-gray-700 mb-3">{review.content}</p>
-
-            <div className="flex flex-wrap gap-2">
-              {review.tags.map((tag) => (
-                <span 
-                  key={tag} 
-                  className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
+        {reviews.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-2">No reviews yet</div>
+            <p className="text-sm text-gray-400">
+              Continue providing excellent care to receive patient feedback
+            </p>
           </div>
-        ))}
+        ) : (
+          reviews.map((review) => (
+            <div key={review.id} className="border-b border-gray-200 pb-6 mb-6 last:border-0">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-medium">Patient #{review.patientId}</h3>
+                  <p className="text-gray-500 text-sm">{formatDate(review.createdAt)}</p>
+                </div>
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      className={`${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                      size={16} 
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-gray-700 mb-3">{review.comment}</p>
+
+              {review.appointmentId && (
+                <div className="text-sm text-gray-500">
+                  Appointment #{review.appointmentId}
+                </div>
+              )}
+            </div>
+          ))
+        )}
 
         <div className="text-sm text-gray-500 mt-6">
-          {doctorProfile.helpfulReviews} found helpful
+          {totalReviews} total reviews
         </div>
       </div>
     </div>

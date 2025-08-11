@@ -1,5 +1,5 @@
 import axios from '../lib/axios';
-import type { DoctorProfile } from '../types/doctor';
+import type { DoctorProfile } from '../types/data/doctor';
 
 export const getAllDoctors = () => 
   axios.get<{ data: DoctorProfile[] }>('/doctors');
@@ -19,16 +19,24 @@ export const updateDoctorProfile = (id: number, data: Partial<DoctorProfile>) =>
 export const deleteDoctorProfile = (id: number) => 
   axios.delete(`/doctors/${id}`);
 
+export const getDoctorAvailability = (doctorId: number, date: string) => 
+  axios.get<{ data: { availableSlots: string[] } }>(`/doctors/${doctorId}/availability?date=${date}`);
+
 export const searchDoctors = (filters: {
+  query?: string;
   specialization?: string;
+  city?: string;
   rating?: number;
   availability?: string;
-  city?: string;
-  state?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
 }) => {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.append(key, value.toString());
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, value.toString());
+    }
   });
-  return axios.get<{ data: DoctorProfile[] }>(`/doctors?${params.toString()}`);
+  return axios.get<{ data: DoctorProfile[]; pagination?: any }>(`/doctors/search?${params.toString()}`);
 };

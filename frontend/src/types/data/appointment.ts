@@ -23,13 +23,13 @@ export interface Appointment {
   id: number;
   doctorId: number;
   patientId: number;
-  date: Date;
+  date: Date | string;
   status: AppointmentStatus;
   type: ConsultationType;
   reason?: string;
   notes?: string;
   recordingId?: number;
-  createdAt: Date;
+  createdAt: Date | string;
   
   doctor?: DoctorProfile;
   patient?: PatientProfile;

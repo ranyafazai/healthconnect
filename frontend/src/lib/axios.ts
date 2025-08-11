@@ -24,8 +24,10 @@ instance.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
+    // Only redirect on 401 errors if it's not an authentication check
+    // Authentication checks should fail gracefully without redirecting
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/me')) {
+      // Handle unauthorized access for non-auth endpoints
       window.location.href = '/auth/signin';
     }
     return Promise.reject(error);

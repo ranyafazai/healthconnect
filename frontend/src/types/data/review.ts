@@ -5,6 +5,7 @@ export interface Review {
   id: number;
   doctorId: number;
   patientId: number;
+  appointmentId?: number;
   rating: number;
   comment?: string;
   createdAt: Date;

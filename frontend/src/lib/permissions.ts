@@ -129,6 +129,18 @@ export const ROLE_PERMISSIONS: RolePermissions = {
         return true; // Simplified for now
       },
     },
+    
+    // Doctor search and discovery
+    {
+      resource: 'doctors',
+      actions: [PERMISSIONS.READ_OTHER_PROFILES],
+    },
+    
+    // Dashboard access
+    {
+      resource: 'dashboard',
+      actions: [PERMISSIONS.READ_OWN_PROFILE],
+    },
   ],
   
   PATIENT: [
@@ -206,10 +218,13 @@ export const hasPermission = (
   const rolePermissions = ROLE_PERMISSIONS[user.role as UserRole];
   if (!rolePermissions) return false;
   
+  console.log(`hasPermission: Checking permission ${permission} for user ${user.role}`, { rolePermissions });
+  
   // Check if user has the specific permission
   for (const perm of rolePermissions) {
     if (perm.resource === '*' || perm.resource === resource) {
       if (perm.actions.includes('*') || perm.actions.includes(permission)) {
+        console.log(`hasPermission: Found permission ${permission} in resource ${perm.resource}`);
         // Check conditions if they exist
         if (perm.conditions) {
           return perm.conditions(user, resourceId);
@@ -219,6 +234,17 @@ export const hasPermission = (
     }
   }
   
+  // If no specific resource match, check if the permission exists in any resource
+  if (!resource) {
+    for (const perm of rolePermissions) {
+      if (perm.actions.includes('*') || perm.actions.includes(permission)) {
+        console.log(`hasPermission: Found permission ${permission} in any resource`);
+        return true;
+      }
+    }
+  }
+  
+  console.log(`hasPermission: Permission ${permission} not found for user ${user.role}`);
   return false;
 };
 
@@ -258,13 +284,19 @@ export const canCreateResource = (user: UserLite | null, resource: string): bool
 
 // Route protection helpers
 export const getProtectedRouteProps = (user: UserLite | null, requiredPermissions: string[]) => {
-  const hasAllPermissions = requiredPermissions.every(permission => 
-    hasPermission(user, permission)
-  );
+  console.log('getProtectedRouteProps: Checking permissions for user:', { user, requiredPermissions });
+  
+  const hasAllPermissions = requiredPermissions.every(permission => {
+    const hasPerm = hasPermission(user, permission);
+    console.log(`getProtectedRouteProps: Permission ${permission}: ${hasPerm}`);
+    return hasPerm;
+  });
+  
+  console.log('getProtectedRouteProps: Final result:', { hasAllPermissions });
   
   return {
     isAuthorized: hasAllPermissions,
-    redirectTo: hasAllPermissions ? undefined : '/signin',
+    redirectTo: hasAllPermissions ? undefined : '/auth/signin',
   };
 };
 

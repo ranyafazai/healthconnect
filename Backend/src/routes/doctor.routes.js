@@ -8,8 +8,14 @@ const router = express.Router();
 // Get all doctors (public)
 router.get('/', doctorController.getAllDoctors);
 
+// Search doctors with filters (public)
+router.get('/search', doctorController.searchDoctors);
+
 // Get doctor dashboard data - Must come before /:id
 router.get('/dashboard/data', authMiddleware, isDoctor, doctorController.getDoctorDashboard);
+
+// Get doctor availability for a specific date (public)
+router.get('/:id/availability', doctorController.getDoctorAvailability);
 
 // Get doctor by ID (public) - Must come last
 router.get('/:id', doctorController.getDoctorById);

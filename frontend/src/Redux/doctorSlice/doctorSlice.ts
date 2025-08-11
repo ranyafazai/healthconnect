@@ -4,39 +4,106 @@ import * as doctorApi from '../../Api/doctor.api';
 
 export interface DoctorState {
   doctors: DoctorProfile[];
-  selectedDoctor: DoctorProfile | null;
+  searchResults: DoctorProfile[];
+  currentDoctor: DoctorProfile | null;
   loading: boolean;
+  searchLoading: boolean;
   error: string | null;
-  dashboardData: any;
   filters: {
-    specialization?: string;
-    rating?: number;
-    availability?: string;
-    city?: string;
-    state?: string;
+    specialty: string;
+    city: string;
+    minRating: string;
+    availability: string;
   };
+  searchQuery: string;
+  sortBy: string;
+  dashboardData: {
+    appointmentsToday: number;
+    totalAppointments: number;
+    pendingAppointments: number;
+    completedAppointments: number;
+    avgRating: number;
+    totalReviews: number;
+    unreadMessages: number;
+  } | null;
+  dashboardLoading: boolean;
 }
 
 const initialState: DoctorState = {
   doctors: [],
-  selectedDoctor: null,
+  searchResults: [],
+  currentDoctor: null,
   loading: false,
+  searchLoading: false,
   error: null,
+  filters: {
+    specialty: 'All Specialties',
+    city: 'All Cities',
+    minRating: 'Any Rating',
+    availability: 'Any Availability'
+  },
+  searchQuery: '',
+  sortBy: 'Name A-Z',
   dashboardData: null,
-  filters: {},
+  dashboardLoading: false
 };
 
 // Async thunks
-export const fetchAllDoctors = createAsyncThunk(
-  'doctor/fetchAllDoctors',
+export const fetchDoctors = createAsyncThunk(
+  'doctor/fetchDoctors',
   async () => {
     const response = await doctorApi.getAllDoctors();
     return response.data?.data || [];
   }
 );
 
-export const fetchDoctorById = createAsyncThunk(
-  'doctor/fetchDoctorById',
+export const searchDoctors = createAsyncThunk(
+  'doctor/searchDoctors',
+  async (params: {
+    query?: string;
+    specialty?: string;
+    city?: string;
+    minRating?: string;
+    availability?: string;
+    sortBy?: string;
+  }) => {
+    // Convert params to match API expectations
+    const apiParams: {
+      query?: string;
+      specialization?: string;
+      city?: string;
+      rating?: number;
+      availability?: string;
+      sortBy?: string;
+    } = {};
+    
+    if (params.query) {
+      apiParams.query = params.query;
+    }
+    if (params.specialty && params.specialty !== 'All Specialties') {
+      apiParams.specialization = params.specialty;
+    }
+    if (params.city && params.city !== 'All Cities') {
+      apiParams.city = params.city;
+    }
+    if (params.minRating && params.minRating !== 'Any Rating') {
+      const ratingValue = params.minRating.replace('+ Stars', '');
+      apiParams.rating = parseFloat(ratingValue);
+    }
+    if (params.availability && params.availability !== 'Any Availability') {
+      apiParams.availability = params.availability;
+    }
+    if (params.sortBy) {
+      apiParams.sortBy = params.sortBy;
+    }
+    
+    const response = await doctorApi.searchDoctors(apiParams);
+    return response.data?.data || [];
+  }
+);
+
+export const getDoctorById = createAsyncThunk(
+  'doctor/getDoctorById',
   async (id: number) => {
     const response = await doctorApi.getDoctorById(id);
     return response.data?.data;
@@ -44,33 +111,9 @@ export const fetchDoctorById = createAsyncThunk(
 );
 
 export const fetchDoctorDashboard = createAsyncThunk(
-  'doctor/fetchDashboard',
+  'doctor/fetchDoctorDashboard',
   async () => {
     const response = await doctorApi.getDoctorDashboard();
-    return response.data?.data;
-  }
-);
-
-export const searchDoctors = createAsyncThunk(
-  'doctor/searchDoctors',
-  async (filters: DoctorState['filters']) => {
-    const response = await doctorApi.searchDoctors(filters);
-    return response.data?.data || [];
-  }
-);
-
-export const createDoctorProfile = createAsyncThunk(
-  'doctor/createProfile',
-  async (profileData: Partial<DoctorProfile>) => {
-    const response = await doctorApi.createDoctorProfile(profileData);
-    return response.data?.data;
-  }
-);
-
-export const updateDoctorProfile = createAsyncThunk(
-  'doctor/updateProfile',
-  async ({ id, data }: { id: number; data: Partial<DoctorProfile> }) => {
-    const response = await doctorApi.updateDoctorProfile(id, data);
     return response.data?.data;
   }
 );
@@ -79,97 +122,95 @@ const doctorSlice = createSlice({
   name: 'doctor',
   initialState,
   reducers: {
-    setSelectedDoctor: (state, action: PayloadAction<DoctorProfile | null>) => {
-      state.selectedDoctor = action.payload;
-    },
     setFilters: (state, action: PayloadAction<Partial<DoctorState['filters']>>) => {
       state.filters = { ...state.filters, ...action.payload };
     },
+    setSearchQuery: (state, action: PayloadAction<string>) => {
+      state.searchQuery = action.payload;
+    },
+    setSortBy: (state, action: PayloadAction<string>) => {
+      state.sortBy = action.payload;
+    },
     clearFilters: (state) => {
-      state.filters = {};
+      state.filters = initialState.filters;
+      state.searchQuery = '';
+      state.sortBy = 'Name A-Z';
     },
-    addDoctor: (state, action: PayloadAction<DoctorProfile>) => {
-      state.doctors.unshift(action.payload);
-    },
-    updateDoctor: (state, action: PayloadAction<DoctorProfile>) => {
-      const index = state.doctors.findIndex(doc => doc.id === action.payload.id);
-      if (index !== -1) {
-        state.doctors[index] = action.payload;
-      }
-    },
+    clearSearchResults: (state) => {
+      state.searchResults = [];
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Fetch all doctors
-      .addCase(fetchAllDoctors.pending, (state) => {
+      // Fetch doctors
+      .addCase(fetchDoctors.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchAllDoctors.fulfilled, (state, action) => {
+      .addCase(fetchDoctors.fulfilled, (state, action) => {
         state.loading = false;
         state.doctors = action.payload;
       })
-      .addCase(fetchAllDoctors.rejected, (state, action) => {
+      .addCase(fetchDoctors.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch doctors';
       })
-      // Fetch by ID
-      .addCase(fetchDoctorById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchDoctorById.fulfilled, (state, action) => {
-        state.loading = false;
-        state.selectedDoctor = action.payload;
-      })
-      .addCase(fetchDoctorById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message || 'Failed to fetch doctor';
-      })
-      // Fetch dashboard
-      .addCase(fetchDoctorDashboard.fulfilled, (state, action) => {
-        state.dashboardData = action.payload;
-      })
       // Search doctors
       .addCase(searchDoctors.pending, (state) => {
-        state.loading = true;
+        state.searchLoading = true;
         state.error = null;
       })
       .addCase(searchDoctors.fulfilled, (state, action) => {
-        state.loading = false;
-        state.doctors = action.payload;
+        state.searchLoading = false;
+        state.searchResults = action.payload;
       })
       .addCase(searchDoctors.rejected, (state, action) => {
-        state.loading = false;
+        state.searchLoading = false;
         state.error = action.error.message || 'Failed to search doctors';
       })
-      // Create profile
-      .addCase(createDoctorProfile.fulfilled, (state, action) => {
+      // Get doctor by ID
+      .addCase(getDoctorById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getDoctorById.fulfilled, (state, action) => {
+        state.loading = false;
         if (action.payload) {
-          state.doctors.unshift(action.payload);
+          state.currentDoctor = action.payload;
+          const existingIndex = state.doctors.findIndex((d: DoctorProfile) => d.id === action.payload.id);
+          if (existingIndex !== -1) {
+            state.doctors[existingIndex] = action.payload;
+          } else {
+            state.doctors.push(action.payload);
+          }
         }
       })
-      // Update profile
-      .addCase(updateDoctorProfile.fulfilled, (state, action) => {
-        if (action.payload) {
-          const index = state.doctors.findIndex(doc => doc.id === action.payload.id);
-          if (index !== -1) {
-            state.doctors[index] = action.payload;
-          }
-          if (state.selectedDoctor?.id === action.payload.id) {
-            state.selectedDoctor = action.payload;
-          }
-        }
+      .addCase(getDoctorById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch doctor';
+      })
+      // Fetch doctor dashboard
+      .addCase(fetchDoctorDashboard.pending, (state) => {
+        state.dashboardLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchDoctorDashboard.fulfilled, (state, action) => {
+        state.dashboardLoading = false;
+        state.dashboardData = action.payload;
+      })
+      .addCase(fetchDoctorDashboard.rejected, (state, action) => {
+        state.dashboardLoading = false;
+        state.error = action.error.message || 'Failed to fetch dashboard data';
       });
   },
 });
 
 export const {
-  setSelectedDoctor,
   setFilters,
+  setSearchQuery,
+  setSortBy,
   clearFilters,
-  addDoctor,
-  updateDoctor,
+  clearSearchResults,
 } = doctorSlice.actions;
 
 export default doctorSlice.reducer;

@@ -8,6 +8,9 @@ const router = express.Router();
 // Get reviews by doctor ID
 router.get('/doctor/:doctorId', reviewController.getReviewsByDoctor);
 
+// Get reviews by patient ID
+router.get('/patient/:patientId', authMiddleware, reviewController.getReviewsByPatient);
+
 // Get review by ID
 router.get('/:id', reviewController.getReviewById);
 

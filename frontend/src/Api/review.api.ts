@@ -4,6 +4,9 @@ import type { Review } from '../types/review';
 export const getDoctorReviews = (doctorId: number) => 
   axios.get<{ data: Review[] }>(`/reviews/doctor/${doctorId}`);
 
+export const getPatientReviews = (patientId: number) => 
+  axios.get<{ data: Review[] }>(`/reviews/patient/${patientId}`);
+
 export const createReview = (data: {
   doctorId: number;
   rating: number;

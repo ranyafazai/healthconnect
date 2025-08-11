@@ -1,45 +1,114 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DoctorCard from './DoctorCard';
 import FullLine from './FullLine';
 import { BookingSummary } from './BookingSummary';
+import type { DoctorProfile } from '../../../types/data/doctor';
+import { getDoctorAvailability } from '../../../Api/doctor.api';
 
 interface DateTimeProps {
   onNext: () => void;
-  bookingData: any;
-  updateBookingData: (data: any) => void;
+  bookingData: {
+    date: string;
+    time: string;
+    [key: string]: any;
+  };
+  updateBookingData: (data: { date?: string; time?: string; [key: string]: any }) => void;
+  doctor?: DoctorProfile;
 }
 
-const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingData }) => {
-  const [selectedDate, setSelectedDate] = useState(bookingData.date || 'Mon, Jan 15');
-  const [selectedTime, setSelectedTime] = useState(bookingData.time || '9:00 AM');
+const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingData, doctor }) => {
+  const [selectedDate, setSelectedDate] = useState(bookingData.date || '');
+  const [selectedTime, setSelectedTime] = useState(bookingData.time || '');
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const dates = [
-    'Mon, Jan 15', 'Tue, Jan 16', 'Wed, Jan 17', 'Thu, Jan 18',
-    'Fri, Jan 19', 'Mon, Jan 22', 'Tue, Jan 23', 'Wed, Jan 24'
-  ];
+  // Generate next 30 days with proper formatting
+  const generateAvailableDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      // Skip weekends (Saturday = 6, Sunday = 0)
+      if (date.getDay() !== 0 && date.getDay() !== 6) {
+        dates.push({
+          value: date.toISOString().split('T')[0],
+          display: date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+          })
+        });
+      }
+    }
+    return dates;
+  };
 
-  const morningTimes = [
-    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM'
-  ];
+  const dates = generateAvailableDates();
 
-  const afternoonTimes = [
-    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
-  ];
+  // Generate time slots (9 AM to 5 PM with 30-minute intervals)
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 9; hour <= 17; hour++) {
+      if (hour === 17) {
+        slots.push(`${hour}:00`);
+      } else {
+        slots.push(`${hour}:00`);
+        slots.push(`${hour}:30`);
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  // Fetch doctor availability when date changes
+  useEffect(() => {
+    if (selectedDate && doctor?.id) {
+      fetchDoctorAvailability();
+    }
+  }, [selectedDate, doctor?.id]);
+
+  const fetchDoctorAvailability = async () => {
+    if (!doctor?.id || !selectedDate) return;
+    
+    setLoading(true);
+    try {
+      // This would call your backend API to get real availability
+      // For now, we'll simulate it
+      const response = await getDoctorAvailability(doctor.id, selectedDate);
+      setAvailableSlots(response.data.data.availableSlots || timeSlots);
+    } catch (error) {
+      console.error('Error fetching availability:', error);
+      // Fallback to all time slots if API fails
+      setAvailableSlots(timeSlots);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNext = () => {
+    if (!selectedDate || !selectedTime) {
+      alert('Please select both date and time');
+      return;
+    }
     updateBookingData({ date: selectedDate, time: selectedTime });
     onNext();
   };
 
   // Update booking data immediately when date or time changes
   React.useEffect(() => {
-    updateBookingData({ date: selectedDate, time: selectedTime });
-  }, [selectedDate, selectedTime, updateBookingData]);
+    if (selectedDate && selectedTime) {
+      updateBookingData({ date: selectedDate, time: selectedTime });
+    }
+  }, [selectedDate, selectedTime]); // Remove updateBookingData from dependencies
 
   return (
     <div>
       {/* Doctor Card at the top */}
-      <DoctorCard />
+      <DoctorCard doctor={doctor} />
 
       {/* Two-column layout */}
       <div style={{ 
@@ -84,18 +153,18 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
             
             <div style={{ 
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '15px'
             }}>
               {dates.map((date) => (
                 <button
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
+                  key={date.value}
+                  onClick={() => setSelectedDate(date.value)}
                   style={{
                     padding: '15px',
-                    backgroundColor: selectedDate === date ? '#008CBA' : '#F8FCFF',
-                    color: selectedDate === date ? '#FFFFFF' : '#333',
-                    border: selectedDate === date ? '2px solid #008CBA' : '2px solid #E0E0E0',
+                    backgroundColor: selectedDate === date.value ? '#008CBA' : '#F8FCFF',
+                    color: selectedDate === date.value ? '#FFFFFF' : '#333',
+                    border: selectedDate === date.value ? '2px solid #008CBA' : '2px solid #E0E0E0',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -108,8 +177,8 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
                     minHeight: '60px'
                   }}
                 >
-                  <div>{date.split(', ')[0]}</div>
-                  <div>{date.split(', ')[1]}</div>
+                  <div>{date.display.split(', ')[0]}</div>
+                  <div>{date.display.split(', ').slice(1).join(', ')}</div>
                 </button>
               ))}
             </div>
@@ -124,25 +193,16 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
               marginBottom: '20px'
             }}>
               Available Times
+              {loading && <span style={{ marginLeft: '10px', fontSize: '14px', color: '#666' }}>(Loading...)</span>}
             </h2>
 
-            {/* Morning Times */}
-            <div style={{ marginBottom: '25px' }}>
-              <h3 style={{ 
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#666',
-                marginBottom: '15px'
-              }}>
-                Morning
-              </h3>
-              
+            {selectedDate ? (
               <div style={{ 
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '15px'
               }}>
-                {morningTimes.map((time) => (
+                {availableSlots.map((time) => (
                   <button
                     key={time}
                     onClick={() => setSelectedTime(time)}
@@ -166,49 +226,17 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Afternoon Times */}
-            <div>
-              <h3 style={{ 
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#666',
-                marginBottom: '15px'
-              }}>
-                Afternoon
-              </h3>
-              
+            ) : (
               <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '15px'
+                textAlign: 'center', 
+                padding: '40px', 
+                color: '#666',
+                backgroundColor: '#F8FCFF',
+                borderRadius: '8px'
               }}>
-                {afternoonTimes.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    style={{
-                      padding: '15px',
-                      backgroundColor: selectedTime === time ? '#008CBA' : '#F8FCFF',
-                      color: selectedTime === time ? '#FFFFFF' : '#333',
-                      border: selectedTime === time ? '2px solid #008CBA' : '2px solid #E0E0E0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: '50px'
-                    }}
-                  >
-                    {time}
-                  </button>
-                ))}
+                Please select a date to see available time slots
               </div>
-            </div>
+            )}
           </div>
 
         </div>

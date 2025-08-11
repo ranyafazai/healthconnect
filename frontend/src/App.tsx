@@ -1,43 +1,51 @@
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState, AppDispatch } from "./Redux/store";
+import { useAppDispatch, useAppSelector } from "./Redux/hooks";
+import type { RootState } from "./Redux/store";
 import { checkAuthStatus } from "./Redux/authSlice/authSlice";
 import PatientPage from "./pages/PatientPage";
 import DoctorPage from "./pages/DoctorPage";
 import LandingPage from "./pages/LandingPage";
+import DoctorSearchPage from "./pages/DoctorSearchPage";
+import DoctorProfilePage from "./pages/DoctorProfilePage";
+import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PERMISSIONS } from "./lib/permissions";
 
-// Component to handle authentication redirects
+// Component to handle authentication status checking
 function AuthRedirect() {
-  const { isAuthenticated, user, loading } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { isAuthenticated, loading } = useAppSelector((state: RootState) => state.auth);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
-    // Check authentication status when component mounts
-    if (!isAuthenticated && !loading) {
+    // Clear any stale authentication state on app startup
+    const clearStaleAuth = () => {
+      const authState = localStorage.getItem('authState');
+      if (authState) {
+        try {
+          const parsed = JSON.parse(authState);
+          // If the stored state is older than 24 hours, clear it
+          if (parsed.timestamp && Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem('authState');
+            return;
+          }
+        } catch (error) {
+          localStorage.removeItem('authState');
+        }
+      }
+    };
+
+    clearStaleAuth();
+    
+    // Check authentication status only once when component mounts
+    // and only if we don't have authentication data
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated && !loading && token) {
       dispatch(checkAuthStatus());
     }
-  }, [dispatch, isAuthenticated, loading]);
-
-  useEffect(() => {
-    // If user is authenticated and on the landing page, redirect to appropriate dashboard
-    console.log('AuthRedirect: isAuthenticated', isAuthenticated);
-    console.log('AuthRedirect: user', user);
-    console.log('AuthRedirect: location.pathname', location.pathname);
-    if (isAuthenticated && user && location.pathname === '/') {
-      if (user.role === 'DOCTOR') {
-        navigate('/doctor/dashboard');
-      } else {
-        navigate('/patient/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, navigate, location.pathname]);
+  }, []); // Empty dependency array to run only once
 
   // Don't render anything while checking authentication
   if (loading) {
@@ -53,7 +61,9 @@ function App() {
       <AuthRedirect />
       <Routes>        
         {/* Public routes */}
-        <Route path="/*" element={<LandingPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth/*" element={<LandingPage />} />
+        <Route path="/search" element={<DoctorSearchPage />} />
         
         {/* Protected patient routes */}
         <Route 
@@ -61,25 +71,38 @@ function App() {
           element={
             <ProtectedRoute 
               requiredRole="PATIENT"
-              requiredPermissions={[PERMISSIONS.READ_OWN_PROFILE]}
             >
               <PatientPage />
             </ProtectedRoute>
           } 
         />
         
-        {/* Protected doctor routes */}
+        {/* Protected booking route */}
+        <Route 
+          path="/patient/booking" 
+          element={
+            <ProtectedRoute 
+              requiredRole="PATIENT"
+            >
+              <BookingProces />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Protected doctor routes - single route handles all doctor pages */}
         <Route 
           path="/doctor/*" 
           element={
             <ProtectedRoute 
               requiredRole="DOCTOR"
-              requiredPermissions={[PERMISSIONS.READ_OWN_PROFILE]}
             >
               <DoctorPage />
             </ProtectedRoute>
           } 
         />
+        
+        {/* Public doctor detail route for viewing other doctors - changed to avoid conflicts */}
+        <Route path="/doctor-detail/:id" element={<DoctorProfilePage />} />
         
         {/* Error pages */}
         <Route path="/unauthorized" element={<Unauthorized />} />

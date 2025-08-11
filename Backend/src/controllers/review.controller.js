@@ -15,19 +15,19 @@ class ReviewController {
   // Create a review
   async createReview(req, res) {
     try {
-      const { doctorId, rating, comment } = req.body;
+      const { doctorId, rating, comment, appointmentId } = req.body;
       const patientId = req.user.patientProfile?.id;
 
       if (!patientId) {
-        return formatResponse(res, 403, false, 'Access denied. Patient profile required.');
+        return errorResponse(res, 403, 'Access denied. Patient profile required.');
       }
 
       if (!doctorId || !rating) {
-        return formatResponse(res, 400, false, 'Missing required fields: doctorId, rating');
+        return errorResponse(res, 400, 'Missing required fields: doctorId, rating');
       }
 
       if (rating < 1 || rating > 5) {
-        return formatResponse(res, 400, false, 'Rating must be between 1 and 5');
+        return errorResponse(res, 400, 'Rating must be between 1 and 5');
       }
 
       // Check if patient has already reviewed this doctor
@@ -39,7 +39,7 @@ class ReviewController {
       });
 
       if (existingReview) {
-        return formatResponse(res, 400, false, 'You have already reviewed this doctor');
+        return errorResponse(res, 400, 'You have already reviewed this doctor');
       }
 
       const review = await prisma.review.create({
@@ -47,27 +47,20 @@ class ReviewController {
           doctorId: parseInt(doctorId),
           patientId: parseInt(patientId),
           rating: parseInt(rating),
-          comment: comment || null
+          comment: comment || null,
+          appointmentId: appointmentId ? parseInt(appointmentId) : null
         },
         include: {
           doctor: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+            select: {
+              firstName: true,
+              lastName: true
             }
           },
           patient: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+            select: {
+              firstName: true,
+              lastName: true
             }
           }
         }
@@ -94,10 +87,10 @@ class ReviewController {
         }
       });
 
-      return formatResponse(res, 201, true, 'Review created successfully', review);
+      return res.json(createdResponse(review, 'Review created successfully'));
     } catch (error) {
       console.error('Create review error:', error);
-      return formatResponse(res, 500, false, 'Failed to create review', null, error.message);
+      return serverErrorResponse(res, 'Failed to create review', error.message);
     }
   }
 
@@ -107,30 +100,61 @@ class ReviewController {
       const { doctorId } = req.params;
 
       if (!doctorId) {
-        return formatResponse(res, 400, false, 'Doctor ID is required');
+        return errorResponse(res, 400, 'Doctor ID is required');
       }
 
       const reviews = await prisma.review.findMany({
         where: { doctorId: parseInt(doctorId) },
         include: {
           patient: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+            select: {
+              firstName: true,
+              lastName: true
             }
           }
         },
         orderBy: { createdAt: 'desc' }
       });
 
-      return formatResponse(res, 200, true, 'Doctor reviews retrieved successfully', reviews);
+      return res.json(successResponse(reviews, 'Doctor reviews retrieved successfully'));
     } catch (error) {
       console.error('Get doctor reviews error:', error);
-      return formatResponse(res, 500, false, 'Failed to get doctor reviews', null, error.message);
+      return serverErrorResponse(res, 'Failed to get doctor reviews', error.message);
+    }
+  }
+
+  // Get reviews by patient ID
+  async getReviewsByPatient(req, res) {
+    try {
+      const { patientId } = req.params;
+      const requestingPatientId = req.user.patientProfile?.id;
+
+      if (!patientId) {
+        return errorResponse(res, 400, 'Patient ID is required');
+      }
+
+      // Ensure the requesting user can only see their own reviews
+      if (parseInt(patientId) !== requestingPatientId) {
+        return forbiddenResponse(res, 'You can only view your own reviews');
+      }
+
+      const reviews = await prisma.review.findMany({
+        where: { patientId: parseInt(patientId) },
+        include: {
+          doctor: {
+            select: {
+              firstName: true,
+              lastName: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return res.json(successResponse(reviews, 'Patient reviews retrieved successfully'));
+    } catch (error) {
+      console.error('Get patient reviews error:', error);
+      return serverErrorResponse(res, 'Failed to get patient reviews', error.message);
     }
   }
 
@@ -140,43 +164,35 @@ class ReviewController {
       const { id } = req.params;
 
       if (!id) {
-        return formatResponse(res, 400, false, 'Review ID is required');
+        return errorResponse(res, 400, 'Review ID is required');
       }
 
       const review = await prisma.review.findUnique({
         where: { id: parseInt(id) },
         include: {
           doctor: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+            select: {
+              firstName: true,
+              lastName: true
             }
           },
           patient: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+            select: {
+              firstName: true,
+              lastName: true
             }
           }
         }
       });
 
       if (!review) {
-        return formatResponse(res, 404, false, 'Review not found');
+        return notFoundResponse(res, 'Review not found');
       }
 
-      return formatResponse(res, 200, true, 'Review retrieved successfully', review);
+      return res.json(successResponse(review, 'Review retrieved successfully'));
     } catch (error) {
       console.error('Get review error:', error);
-      return formatResponse(res, 500, false, 'Failed to get review', null, error.message);
+      return serverErrorResponse(res, 'Failed to get review', error.message);
     }
   }
 
@@ -188,15 +204,15 @@ class ReviewController {
       const patientId = req.user.patientProfile?.id;
 
       if (!patientId) {
-        return formatResponse(res, 403, false, 'Access denied. Patient profile required.');
+        return errorResponse(res, 403, 'Access denied. Patient profile required.');
       }
 
       if (!id) {
-        return formatResponse(res, 400, false, 'Review ID is required');
+        return errorResponse(res, 400, 'Review ID is required');
       }
 
       if (rating && (rating < 1 || rating > 5)) {
-        return formatResponse(res, 400, false, 'Rating must be between 1 and 5');
+        return errorResponse(res, 400, 'Rating must be between 1 and 5');
       }
 
       const review = await prisma.review.findUnique({
@@ -204,11 +220,11 @@ class ReviewController {
       });
 
       if (!review) {
-        return formatResponse(res, 404, false, 'Review not found');
+        return notFoundResponse(res, 'Review not found');
       }
 
       if (review.patientId !== parseInt(patientId)) {
-        return formatResponse(res, 403, false, 'You can only update your own reviews');
+        return forbiddenResponse(res, 'You can only update your own reviews');
       }
 
       const updatedReview = await prisma.review.update({
@@ -255,10 +271,10 @@ class ReviewController {
         });
       }
 
-      return formatResponse(res, 200, true, 'Review updated successfully', updatedReview);
+      return res.json(successResponse(updatedReview, 'Review updated successfully'));
     } catch (error) {
       console.error('Update review error:', error);
-      return formatResponse(res, 500, false, 'Failed to update review', null, error.message);
+      return serverErrorResponse(res, 'Failed to update review', error.message);
     }
   }
 
@@ -269,11 +285,11 @@ class ReviewController {
       const patientId = req.user.patientProfile?.id;
 
       if (!patientId) {
-        return formatResponse(res, 403, false, 'Access denied. Patient profile required.');
+        return errorResponse(res, 403, 'Access denied. Patient profile required.');
       }
 
       if (!id) {
-        return formatResponse(res, 400, false, 'Review ID is required');
+        return errorResponse(res, 400, 'Review ID is required');
       }
 
       const review = await prisma.review.findUnique({
@@ -281,11 +297,11 @@ class ReviewController {
       });
 
       if (!review) {
-        return formatResponse(res, 404, false, 'Review not found');
+        return notFoundResponse(res, 'Review not found');
       }
 
       if (review.patientId !== parseInt(patientId)) {
-        return formatResponse(res, 403, false, 'You can only delete your own reviews');
+        return forbiddenResponse(res, 'You can only delete your own reviews');
       }
 
       await prisma.review.delete({
@@ -306,10 +322,10 @@ class ReviewController {
         data: { avgReview: avgRating }
       });
 
-      return formatResponse(res, 200, true, 'Review deleted successfully');
+      return res.json(successResponse(null, 'Review deleted successfully'));
     } catch (error) {
       console.error('Delete review error:', error);
-      return formatResponse(res, 500, false, 'Failed to delete review', null, error.message);
+      return serverErrorResponse(res, 'Failed to delete review', error.message);
     }
   }
 
@@ -342,10 +358,10 @@ class ReviewController {
         orderBy: { createdAt: 'desc' }
       });
 
-      return formatResponse(res, 200, true, 'All reviews retrieved successfully', reviews);
+      return res.json(successResponse(reviews, 'All reviews retrieved successfully'));
     } catch (error) {
       console.error('Get all reviews error:', error);
-      return formatResponse(res, 500, false, 'Failed to get all reviews', null, error.message);
+      return serverErrorResponse(res, 'Failed to get all reviews', error.message);
     }
   }
 }

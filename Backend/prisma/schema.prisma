@@ -83,7 +83,7 @@ model DoctorProfile {
   firstName         String
   lastName          String
   photoId           Int?                 @unique
-  professionalBio   String?             @db.Text
+  professionalBio   String?              @db.Text
   specialization    String
   yearsExperience   Int
   medicalLicense    String
@@ -151,6 +151,7 @@ model Appointment {
   patient       PatientProfile   @relation(fields: [patientId], references: [id])
   recording     File?            @relation("AppointmentRecording", fields: [recordingId], references: [id])
   messages      Message[]
+  reviews       Review[]
 }
 
 model Message {
@@ -184,15 +185,17 @@ model VideoCall {
 }
 
 model Review {
-  id         Int            @id @default(autoincrement())
-  doctorId   Int
-  patientId  Int
-  rating     Int
-  comment    String?        @db.Text
-  createdAt  DateTime       @default(now())
+  id            Int            @id @default(autoincrement())
+  doctorId      Int
+  patientId     Int
+  appointmentId Int?
+  rating        Int
+  comment       String?        @db.Text
+  createdAt     DateTime       @default(now())
 
-  doctor     DoctorProfile  @relation(fields: [doctorId], references: [id])
-  patient    PatientProfile @relation(fields: [patientId], references: [id])
+  doctor        DoctorProfile  @relation(fields: [doctorId], references: [id])
+  patient       PatientProfile @relation(fields: [patientId], references: [id])
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
 }
 
 model MedicalRecord {
@@ -204,7 +207,7 @@ model MedicalRecord {
   createdAt   DateTime      @default(now())
 
   patient     PatientProfile @relation(fields: [patientId], references: [id])
-  file        File?         @relation("MedicalRecordFile", fields: [fileId], references: [id])
+  file        File?          @relation("MedicalRecordFile", fields: [fileId], references: [id])
 }
 
 model File {

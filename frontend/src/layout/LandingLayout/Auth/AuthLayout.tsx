@@ -1,4 +1,7 @@
 import React, { type ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAppSelector } from "../../../Redux/hooks";
+import type { RootState } from "../../../Redux/store";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -6,6 +9,17 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children, title }: AuthLayoutProps) {
+  const { isAuthenticated, user } = useAppSelector((state: RootState) => state.auth);
+
+  // If user is authenticated, redirect to appropriate dashboard
+  if (isAuthenticated && user) {
+    if (user.role === 'DOCTOR') {
+      return <Navigate to="/doctor/dashboard" replace />;
+    } else {
+      return <Navigate to="/patient/dashboard" replace />;
+    }
+  }
+
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Left side: form */}

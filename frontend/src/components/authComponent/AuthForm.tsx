@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useAppDispatch } from "../../Redux/hooks";
 import { login, register } from "../../Api/auth.api";
 import { setAuth } from "../../Redux/authSlice/authSlice";
 import type { UserLite } from "../../types/user";
@@ -14,7 +14,7 @@ interface AuthFormProps {
 
 export default function AuthForm({ type }: AuthFormProps) {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   
   const [formData, setFormData] = useState({
     email: "",
@@ -110,6 +110,11 @@ export default function AuthForm({ type }: AuthFormProps) {
         console.log('Redirecting to patient dashboard');
         navigate('/patient/dashboard');
       }
+      
+      // Add a small delay to ensure Redux state is updated
+      setTimeout(() => {
+        console.log('Current auth state after login:', { isAuthenticated: true, user });
+      }, 100);
       
     } catch (err: any) {
       // Handle API error shape from backend controllers
@@ -312,14 +317,14 @@ export default function AuthForm({ type }: AuthFormProps) {
           {isSignUp ? (
             <p>
               Already have an account?{" "}
-              <a href="/signin" className="text-[#008CBA] hover:text-[#007BAA] font-semibold transition-colors">
+              <a href="/auth/signin" className="text-[#008CBA] hover:text-[#007BAA] font-semibold transition-colors">
                 Sign in here
               </a>
             </p>
           ) : (
             <p>
               Don't have an account?{" "}
-              <a href="/signup" className="text-[#008CBA] hover:text-[#007BAA] font-semibold transition-colors">
+              <a href="/auth/signup" className="text-[#008CBA] hover:text-[#007BAA] font-semibold transition-colors">
                 Sign up here
               </a>
             </p>

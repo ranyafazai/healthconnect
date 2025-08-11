@@ -2,7 +2,7 @@ import axios from '../lib/axios';
 import type { User } from '../types/user';
 
 export const getUserProfile = () => 
-  axios.get<{ data: User }>('/users/profile');
+  axios.get<{ data: User }>('/users/me');
 
 export const updateUserProfile = (data: Partial<User>) => 
   axios.put<{ data: User }>('/users/profile', data);
