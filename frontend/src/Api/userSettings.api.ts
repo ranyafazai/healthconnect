@@ -32,3 +32,4 @@ export const getUserSettings = () =>
 
 export const updateUserSettings = (data: Partial<UserSettings>) => 
   axios.put<{ data: UserSettings }>('/user-settings', data);
+

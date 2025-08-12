@@ -11,3 +11,4 @@ router.get('/', authMiddleware, userSettingsController.getUserSettings);
 router.put('/', authMiddleware, userSettingsController.updateUserSettings);
 
 export default router;
+
