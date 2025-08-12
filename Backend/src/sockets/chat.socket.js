@@ -38,6 +38,12 @@ export default function registerChatSocket(io) {
     // Join appointment room for real-time messaging
     socket.on('join-appointment', async (appointmentId) => {
       try {
+        // Check if user has already joined a user room
+        if (!socket.userId) {
+          socket.emit('error', { message: 'Please join a user room first' });
+          return;
+        }
+
         const appointment = await prisma.appointment.findUnique({
           where: { id: parseInt(appointmentId) },
           include: {
