@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { getSocket } from '../../lib/socket';
 import { getConversation, sendMessage, getAppointmentMessages } from '../../Api/message.api';
+import axios from '../../lib/axios';
 import type { Message, MessageType } from '../../types/data/message';
 import type { RootState } from '../store';
 
@@ -17,17 +18,17 @@ type ChatState = {
   selectedId: number | null;
   messages: Message[];
   loadingMessages: boolean;
+  unreadCount?: number;
 };
 
 const initialState: ChatState = {
   isConnected: false,
   connecting: false,
-  conversations: [
-    { id: 2, name: 'Emma Thompson', lastMessage: 'Last visit: 2 weeks ago' },
-  ],
-  selectedId: 2,
+  conversations: [],
+  selectedId: null,
   messages: [],
   loadingMessages: false,
+  unreadCount: 0,
 };
 
 // Module-level socket map (avoid storing non-serializable in Redux state)
@@ -35,97 +36,73 @@ const chatSockets: Map<number, ReturnType<typeof getSocket>> = new Map();
 
 // Function to join appointment room
 export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
-  console.log('🔌 Attempting to join appointment room:', { appointmentId, userId });
+  
   
   const chatSocket = chatSockets.get(userId);
   if (chatSocket && chatSocket.connected) {
-    console.log('🔌 User', userId, 'joining appointment room:', appointmentId);
-    console.log('🔌 Socket connection status:', chatSocket.connected);
+    
     chatSocket.emit('join-appointment', appointmentId);
     console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
   } else {
-    console.log('❌ User', userId, 'socket not connected for appointment room join');
-    console.log('❌ Socket exists:', !!chatSocket);
-    console.log('❌ Socket connected:', chatSocket?.connected);
+    
   }
 };
 
 export const connectChat = createAsyncThunk(
   'chat/connect',
   async (currentUserId: number, { dispatch }) => {
-    console.log('🔌 connectChat called for user:', currentUserId);
+  
     
     // Check if user already has a socket connection
     if (chatSockets.has(currentUserId)) {
       const existingSocket = chatSockets.get(currentUserId);
       if (existingSocket && existingSocket.connected) {
-        console.log('🔌 Chat socket already connected for user:', currentUserId);
+        
         return;
       } else {
-        console.log('🔌 Existing socket found but not connected, removing...');
+        
         chatSockets.delete(currentUserId);
       }
     }
     
-    console.log('🔌 Creating new chat socket connection for user:', currentUserId);
+    
     const chatSocket = getSocket('/chat');
     
     // Log socket state
-    console.log('🔌 Socket created, initial state:', {
-      id: chatSocket.id,
-      connected: chatSocket.connected
-    });
+    
     
     chatSockets.set(currentUserId, chatSocket);
 
     // Bind socket events before connecting
     const onNewMessage = (msg: Message) => {
-      console.log('📨 User', currentUserId, 'received new message via socket:', msg);
-      console.log('📨 Message details:', {
-        id: msg.id,
-        senderId: msg.senderId,
-        receiverId: msg.receiverId,
-        content: msg.content,
-        appointmentId: msg.appointmentId
-      });
+      
       
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        console.log('📨 Message is for this user, adding to state');
+        
         dispatch(addMessage(msg));
-        console.log('📨 Message dispatched to Redux state for user:', currentUserId);
+        
       } else {
-        console.log('📨 Message is not for this user, ignoring');
+        
       }
     };
 
     const onMessageSent = (msg: Message) => {
-      console.log('📤 User', currentUserId, 'received message sent confirmation via socket:', msg);
-      console.log('📤 Message confirmation details:', {
-        id: msg.id,
-        senderId: msg.senderId,
-        receiverId: msg.receiverId,
-        content: msg.content,
-        appointmentId: msg.appointmentId
-      });
+      
       
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        console.log('📤 Message confirmation is for this user, updating state');
+        
         dispatch(addMessage(msg));
-        console.log('📤 Message confirmation dispatched to Redux state for user:', currentUserId);
+        
       } else {
-        console.log('📤 Message confirmation is not for this user, ignoring');
+        
       }
     };
 
-    const onJoined = (data: { userId: number; role: string }) => {
-      console.log('🔌 User', currentUserId, 'joined chat room:', data);
-    };
+    const onJoined = (data: { userId: number; role: string }) => {};
 
-    const onAppointmentJoined = (data: { appointmentId: number }) => {
-      console.log('🔌 User', currentUserId, 'joined appointment room:', data);
-    };
+    const onAppointmentJoined = (data: { appointmentId: number }) => {};
 
     // Bind all events
     chatSocket.on('joined', onJoined);
@@ -134,18 +111,15 @@ export const connectChat = createAsyncThunk(
     chatSocket.on('message-sent', onMessageSent);
 
     chatSocket.on('connect', () => {
-      console.log('🔌 Chat socket connected successfully for user:', currentUserId);
-      console.log('🔌 Socket details after connect:', {
-        id: chatSocket.id,
-        connected: chatSocket.connected
-      });
+      
       dispatch(setIsConnected(true));
-      console.log('🔌 Emitting join-user for user:', currentUserId);
       chatSocket.emit('join-user', currentUserId);
+      // Fetch unread count upon connect
+      try { axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); } catch {}
     });
 
     chatSocket.on('disconnect', () => {
-      console.log('🔌 Chat socket disconnected for user:', currentUserId);
+      
       dispatch(setIsConnected(false));
     });
 
@@ -155,10 +129,10 @@ export const connectChat = createAsyncThunk(
 
     // If socket is already connected, emit join-user immediately
     if (chatSocket.connected) {
-      console.log('🔌 Socket already connected, joining user immediately:', currentUserId);
+      
       chatSocket.emit('join-user', currentUserId);
     } else {
-      console.log('🔌 Socket not yet connected, waiting for connect event...');
+      
     }
   }
 );
@@ -166,7 +140,7 @@ export const connectChat = createAsyncThunk(
 export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId: number) => {
   const chatSocket = chatSockets.get(userId);
   if (chatSocket) {
-    console.log('🔌 Disconnecting chat socket for user:', userId);
+  
     chatSocket.disconnect();
     chatSockets.delete(userId);
   }
@@ -246,6 +220,9 @@ const chatSlice = createSlice({
     },
     setConversations(state, action: PayloadAction<ConversationLite[]>) {
       state.conversations = action.payload;
+    },
+    setUnreadCount(state, action: PayloadAction<number>) {
+      state.unreadCount = action.payload;
     },
   },
   extraReducers: (builder) => {

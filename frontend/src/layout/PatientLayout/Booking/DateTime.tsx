@@ -21,6 +21,7 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
   const [selectedTime, setSelectedTime] = useState(bookingData.time || '');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Generate next 30 days with proper formatting
   const generateAvailableDates = () => {
@@ -75,6 +76,7 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
     if (!doctor?.id || !selectedDate) return;
     
     setLoading(true);
+    setError(null);
     try {
       // This would call your backend API to get real availability
       // For now, we'll simulate it
@@ -82,6 +84,7 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
       setAvailableSlots(response.data.data.availableSlots || timeSlots);
     } catch (error) {
       console.error('Error fetching availability:', error);
+      setError('Failed to load availability. Showing default time slots.');
       // Fallback to all time slots if API fails
       setAvailableSlots(timeSlots);
     } finally {
@@ -137,6 +140,20 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
           }}>
             Select Date & Time
           </h2>
+          {error && (
+            <div style={{
+              marginTop: '10px',
+              marginBottom: '10px',
+              border: '1px solid #fecaca',
+              backgroundColor: '#fef2f2',
+              color: '#b91c1c',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
           
           <FullLine currentStep={1} />
           
@@ -193,7 +210,20 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
               marginBottom: '20px'
             }}>
               Available Times
-              {loading && <span style={{ marginLeft: '10px', fontSize: '14px', color: '#666' }}>(Loading...)</span>}
+              {loading && (
+                <span style={{ marginLeft: '10px', fontSize: '14px', color: '#666', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="loader" style={{
+                    width: '14px',
+                    height: '14px',
+                    border: '2px solid #bae6fd',
+                    borderTopColor: '#0284c7',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Loading...
+                </span>
+              )}
             </h2>
 
             {selectedDate ? (
