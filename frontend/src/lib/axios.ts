@@ -1,6 +1,7 @@
 // frontend/src/lib/axios.ts
 import axios from "axios";
 import config from "../config/env";
+import toast from 'react-hot-toast';
 
 const instance = axios.create({
   baseURL: config.API_URL,
@@ -25,12 +26,15 @@ instance.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Only redirect on 401 errors if it's not an authentication check
-    // Authentication checks should fail gracefully without redirecting
-    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/me')) {
-      // Handle unauthorized access for non-auth endpoints
-      // Use window.location.href only as a last resort
-      console.warn('Unauthorized access detected, but not redirecting to prevent infinite loops');
+    // Centralized API error handling
+    const status = error.response?.status;
+    const message = error.response?.data?.message || error.message || 'Request failed';
+    if (status === 401 && !error.config?.url?.includes('/auth/me')) {
+      // Redirect only if not on auth check
+      window.location.href = '/auth/signin';
+    } else {
+      // Surface friendly toast for other errors
+      try { toast.error(message); } catch {}
     }
     return Promise.reject(error);
   }

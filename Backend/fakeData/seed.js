@@ -18,22 +18,22 @@ function generateDoctorProfile() {
   
   const specialization = faker.helpers.arrayElement(specializations);
   
-  // Generate more realistic and varied availability
+  // Generate availability aligned with UI (array of strings "HH:MM-HH:MM")
   const generateAvailability = () => {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const availability = {};
-    
     days.forEach(day => {
-              if (faker.helpers.maybe(() => true, { probability: 0.8 })) { // 80% chance of being available
-        const morningStart = faker.helpers.arrayElement(['08:00', '08:30', '09:00', '09:30']);
+      const open = faker.helpers.maybe(() => true, { probability: 0.7 });
+      if (open) {
+        const morningStart = faker.helpers.arrayElement(['08:00', '08:30', '09:00']);
         const morningEnd = faker.helpers.arrayElement(['12:00', '12:30', '13:00']);
         const afternoonStart = faker.helpers.arrayElement(['13:30', '14:00', '14:30']);
-        const afternoonEnd = faker.helpers.arrayElement(['17:00', '17:30', '18:00', '18:30']);
-        
+        const afternoonEnd = faker.helpers.arrayElement(['17:00', '17:30', '18:00']);
         availability[day] = [`${morningStart}-${morningEnd}`, `${afternoonStart}-${afternoonEnd}`];
+      } else {
+        availability[day] = [];
       }
     });
-    
     return availability;
   };
 
@@ -284,6 +284,119 @@ async function main() {
       });
     }
 
+    // Create past consultations specifically for PatientTest
+    console.log('📋 Creating past consultations for PatientTest...');
+    const patientTest = testPatientUser;
+    const pastConsultationDoctors = doctors.slice(0, 3); // Use first 3 doctors for variety
+    
+    const pastConsultationReasons = [
+      'Annual physical examination',
+      'Follow-up consultation for chronic condition',
+      'Symptom evaluation and treatment',
+      'Medication review and adjustment',
+      'Preventive health screening',
+      'Specialist consultation referral',
+      'Emergency consultation for acute symptoms',
+      'Routine health checkup',
+      'Treatment plan discussion',
+      'Lab results review'
+    ];
+
+    for (let i = 0; i < 8; i++) {
+      const doctor = faker.helpers.arrayElement(pastConsultationDoctors);
+      const appointmentType = faker.helpers.arrayElement(['TEXT', 'VIDEO']);
+      
+      // Generate past dates (within last 6 months)
+      const pastDate = faker.date.past({ years: 0.5 });
+      
+      const appointmentData = {
+        doctorId: doctor.doctorProfile.id,
+        patientId: patientTest.patientProfile.id,
+        date: pastDate,
+        status: 'COMPLETED',
+        type: appointmentType,
+        reason: faker.helpers.arrayElement(pastConsultationReasons),
+        notes: faker.lorem.paragraphs(2, '\n\n')
+      };
+
+      // Add recording for video consultations (60% chance for past consultations)
+      if (appointmentType === 'VIDEO' && faker.helpers.maybe(() => true, { probability: 0.6 })) {
+        const recording = await prisma.file.create({
+          data: generateFile(doctor.id, 'CONSULTATION_RECORDING')
+        });
+        appointmentData.recordingId = recording.id;
+      }
+
+      const appointment = await prisma.appointment.create({
+        data: appointmentData
+      });
+
+      // Add messages for each past consultation
+      const messageCount = faker.number.int({ min: 3, max: 8 });
+      for (let j = 0; j < messageCount; j++) {
+        const isDoctorMessage = j % 2 === 0; // Alternate between doctor and patient
+        const sender = isDoctorMessage ? doctor : patientTest;
+        const receiver = isDoctorMessage ? patientTest : doctor;
+        
+        const messageContent = isDoctorMessage ? 
+          faker.helpers.arrayElement([
+            "Hello! How are you feeling today?",
+            "I've reviewed your symptoms. Let's discuss the treatment plan.",
+            "Your test results look good. Continue with the prescribed medication.",
+            "I've sent you a prescription for the new medication.",
+            "Please schedule a follow-up appointment in 2 weeks.",
+            "The treatment seems to be working well. Keep up the good work!",
+            "I've updated your treatment plan based on our discussion.",
+            "Remember to take your medication as prescribed."
+          ]) :
+          faker.helpers.arrayElement([
+            "Hi doctor, I'm feeling much better now.",
+            "I have a question about the medication dosage.",
+            "Thank you for the consultation, it was very helpful.",
+            "I'm experiencing some mild side effects.",
+            "Can you explain the test results in more detail?",
+            "I need a prescription refill.",
+            "The symptoms have improved significantly.",
+            "When should I come back for a checkup?"
+          ]);
+
+        await prisma.message.create({
+          data: {
+            senderId: sender.id,
+            receiverId: receiver.id,
+            content: messageContent,
+            type: 'TEXT',
+            isRead: true,
+            appointmentId: appointment.id
+          }
+        });
+      }
+
+      // Add a review for some past consultations
+      if (faker.helpers.maybe(() => true, { probability: 0.7 })) {
+        const rating = faker.number.int({ min: 4, max: 5 }); // Mostly positive reviews
+        const reviewComments = [
+          "Excellent consultation! Doctor was very thorough and caring.",
+          "Great experience. The doctor took time to explain everything clearly.",
+          "Very professional and knowledgeable. Highly recommend!",
+          "Outstanding care and attention to detail.",
+          "The consultation was very helpful and informative.",
+          "Doctor was patient and answered all my questions.",
+          "Great bedside manner and professional service.",
+          "Very satisfied with the consultation and treatment plan."
+        ];
+
+        await prisma.review.create({
+          data: {
+            doctorId: doctor.doctorProfile.id,
+            patientId: patientTest.patientProfile.id,
+            rating,
+            comment: faker.helpers.arrayElement(reviewComments)
+          }
+        });
+      }
+    }
+
     // Create reviews
     for (let i = 0; i < 25; i++) {
       const doctor = faker.helpers.arrayElement(doctors);
@@ -503,10 +616,10 @@ async function main() {
     console.log(`\n📊 Summary of created data:`);
     console.log(`👨‍⚕️  Doctors: ${doctors.length}`);
     console.log(`👥 Patients: ${patients.length}`);
-    console.log(`📅 Appointments: 35`);
-    console.log(`⭐ Reviews: 25`);
+    console.log(`📅 Appointments: 43 (35 general + 8 past consultations for PatientTest)`);
+    console.log(`⭐ Reviews: 25+ (including PatientTest reviews)`);
     console.log(`📋 Medical Records: ${patients.length * 2} (average)`);
-    console.log(`💬 Messages: 50`);
+    console.log(`💬 Messages: 50+ (including PatientTest consultation messages)`);
     console.log(`🔔 Notifications: ${(doctors.length + patients.length) * 3} (average)`);
     console.log(`📁 Files: ${doctors.length * 3 + patients.length * 2} (average)`);
     
@@ -515,6 +628,7 @@ async function main() {
     console.log(`   Patient: patient.test@mail.com / PatientPass123!`);
     
     console.log(`\n💡 The database now contains realistic test data for testing all features!`);
+    console.log(`📋 PatientTest now has 8 past consultations with messages and recordings for testing!`);
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);

@@ -32,19 +32,17 @@ export const store = configureStore({
     }),
 });
 
+// Debug logs removed for production readiness
+
 // Subscribe to store changes and save auth state to localStorage
 // Only save when auth state actually changes to prevent excessive localStorage operations
 let previousAuthState: string | null = null;
 
 store.subscribe(() => {
   const state = store.getState();
-  const currentAuthState = JSON.stringify(state.auth);
+  saveStateToStorage(state.auth);
   
-  // Only save to localStorage if auth state has actually changed
-  if (previousAuthState !== currentAuthState) {
-    saveStateToStorage(state.auth);
-    previousAuthState = currentAuthState;
-  }
+  // Persist minimal auth state only
 });
 
 export type RootState = ReturnType<typeof store.getState>;
