@@ -51,9 +51,22 @@ export default function registerChatSocket(io) {
           return;
         }
 
-        // Check if user is part of this appointment
-        if (socket.userId !== appointment.doctor.userId && 
-            socket.userId !== appointment.patient.userId) {
+        // Debug logging to understand the data structure
+        logger.info(`Appointment data for ${appointmentId}:`, {
+          appointmentId: appointment.id,
+          doctorProfileId: appointment.doctorId,
+          patientProfileId: appointment.patientId,
+          doctorUserId: appointment.doctor?.user?.id,
+          patientUserId: appointment.patient?.user?.id,
+          socketUserId: socket.userId
+        });
+
+        // Check if user is part of this appointment by comparing user IDs
+        // appointment.doctor.user.id and appointment.patient.user.id are the actual user IDs
+        if (socket.userId !== appointment.doctor.user.id && 
+            socket.userId !== appointment.patient.user.id) {
+          logger.error(`Access denied for user ${socket.userId} to appointment ${appointmentId}`);
+          logger.error(`Expected: doctor.user.id=${appointment.doctor.user.id} or patient.user.id=${appointment.patient.user.id}`);
           socket.emit('error', { message: 'Access denied' });
           return;
         }

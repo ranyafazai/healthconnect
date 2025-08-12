@@ -23,7 +23,7 @@ patientSocket.on('connect', () => {
 patientSocket.on('joined', (data) => {
   console.log('✅ Patient joined user room:', data);
   
-  // Join appointment room
+  // Join appointment room AFTER joining user room
   console.log('🔌 Patient joining appointment room...');
   patientSocket.emit('join-appointment', APPOINTMENT_ID);
 });
