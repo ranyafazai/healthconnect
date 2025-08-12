@@ -1,5 +1,5 @@
 import express from 'express';
-import userSettingsController from '../controllers/userSettings.controller.js';
+import userSettingsController from '../controllers/userSettings.controller.js'; 
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
