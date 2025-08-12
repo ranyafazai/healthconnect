@@ -38,6 +38,12 @@ export default function registerChatSocket(io) {
     // Join appointment room for real-time messaging
     socket.on('join-appointment', async (appointmentId) => {
       try {
+        // Check if user has already joined a user room
+        if (!socket.userId) {
+          socket.emit('error', { message: 'Please join a user room first' });
+          return;
+        }
+
         const appointment = await prisma.appointment.findUnique({
           where: { id: parseInt(appointmentId) },
           include: {
@@ -51,9 +57,22 @@ export default function registerChatSocket(io) {
           return;
         }
 
-        // Check if user is part of this appointment
-        if (socket.userId !== appointment.doctor.userId && 
-            socket.userId !== appointment.patient.userId) {
+        // Debug logging to understand the data structure
+        logger.info(`Appointment data for ${appointmentId}:`, {
+          appointmentId: appointment.id,
+          doctorProfileId: appointment.doctorId,
+          patientProfileId: appointment.patientId,
+          doctorUserId: appointment.doctor?.user?.id,
+          patientUserId: appointment.patient?.user?.id,
+          socketUserId: socket.userId
+        });
+
+        // Check if user is part of this appointment by comparing user IDs
+        // appointment.doctor.user.id and appointment.patient.user.id are the actual user IDs
+        if (socket.userId !== appointment.doctor.user.id && 
+            socket.userId !== appointment.patient.user.id) {
+          logger.error(`Access denied for user ${socket.userId} to appointment ${appointmentId}`);
+          logger.error(`Expected: doctor.user.id=${appointment.doctor.user.id} or patient.user.id=${appointment.patient.user.id}`);
           socket.emit('error', { message: 'Access denied' });
           return;
         }
@@ -105,12 +124,12 @@ export default function registerChatSocket(io) {
           }
         });
 
-        // Emit to receiver
-        socket.to(`user-${receiverId}`).emit('new-message', message);
+        // Emit to receiver's personal room
+        chatNamespace.to(`user-${receiverId}`).emit('new-message', message);
         
         // Emit to appointment room if applicable
         if (appointmentId) {
-          socket.to(`appointment-${appointmentId}`).emit('appointment-message', message);
+          chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-message', message);
         }
 
         // Send confirmation to sender
@@ -132,7 +151,7 @@ export default function registerChatSocket(io) {
         });
 
         // Notify sender that message was read
-        socket.to(`user-${message.senderId}`).emit('message-read', {
+        chatNamespace.to(`user-${message.senderId}`).emit('message-read', {
           messageId: parseInt(messageId),
           readBy: socket.userId
         });
@@ -148,13 +167,13 @@ export default function registerChatSocket(io) {
     socket.on('typing-start', (data) => {
       const { receiverId, appointmentId } = data;
       
-      socket.to(`user-${receiverId}`).emit('user-typing', {
+      chatNamespace.to(`user-${receiverId}`).emit('user-typing', {
         userId: socket.userId,
         isTyping: true
       });
 
       if (appointmentId) {
-        socket.to(`appointment-${appointmentId}`).emit('appointment-typing', {
+        chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-typing', {
           userId: socket.userId,
           isTyping: true
         });
@@ -164,13 +183,13 @@ export default function registerChatSocket(io) {
     socket.on('typing-stop', (data) => {
       const { receiverId, appointmentId } = data;
       
-      socket.to(`user-${receiverId}`).emit('user-typing', {
+      chatNamespace.to(`user-${receiverId}`).emit('user-typing', {
         userId: socket.userId,
         isTyping: false
       });
 
       if (appointmentId) {
-        socket.to(`appointment-${appointmentId}`).emit('appointment-typing', {
+        chatNamespace.to(`appointment-${appointmentId}`).emit('appointment-typing', {
           userId: socket.userId,
           isTyping: false
         });
