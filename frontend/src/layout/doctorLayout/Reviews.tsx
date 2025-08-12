@@ -3,63 +3,27 @@ import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { Star } from 'lucide-react';
 import type { RootState } from '../../Redux/store';
 import { fetchDoctorReviews } from '../../Redux/reviewSlice/reviewSlice';
-import type { Review } from '../../types/data/review';
-
-interface RatingDistribution {
-  [key: number]: number;
-}
-
-interface PerformanceInsights {
-  ratingDistribution: RatingDistribution;
-  topFeedback: {
-    [key: string]: string[];
-  };
-  strengths: string[];
-}
 
 const Reviews: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state: RootState) => state.auth);
-  const { reviews, loading } = useAppSelector((state: RootState) => state.review);
+   const { user } = useAppSelector((state: RootState) => state.auth); 
+    const { profile } = useAppSelector((state: RootState) => state.user);
+  const { reviews, stats, loading } = useAppSelector((state: RootState) => state.review);
 
   useEffect(() => {
-    if (user?.id) {
-      dispatch(fetchDoctorReviews(user.id));
+    if (profile?.id) {
+      dispatch(fetchDoctorReviews(profile.id));
     }
-  }, [dispatch, user?.id]);
-
-  // Calculate rating distribution from real data
-  const ratingDistribution: RatingDistribution = {
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0
-  };
-
-  reviews.forEach(review => {
-    ratingDistribution[review.rating] = (ratingDistribution[review.rating] || 0) + 1;
-  });
-
-  const totalReviews = reviews.length;
-  const averageRating = totalReviews > 0 
-    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(1)
-    : 0;
-
-  // Generate performance insights
-  const performanceInsights: PerformanceInsights = {
-    ratingDistribution,
-    topFeedback: {
-      "Professional": ["Thorough", "Clear Explanations", "On Time"],
-      "Knowledgeable": ["Good Listener", "Patient", "Expert"]
-    },
-    strengths: [
-      totalReviews > 0 
-        ? `You have received ${totalReviews} reviews with an average rating of ${averageRating} stars.`
-        : "No reviews yet. Continue providing excellent care to receive patient feedback."
-    ]
-  };
+  }, [dispatch, profile?.id]);
 
   const renderRatingDistribution = () => {
+    if (!stats) return null;
+
     return [5, 4, 3, 2, 1].map((rating) => {
-      const count = ratingDistribution[rating] || 0;
-      const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+      const count = stats.ratingDistribution[rating] || 0;
+      const percentage = stats.totalReviews > 0 
+        ? (count / stats.totalReviews) * 100 
+        : 0;
       
       return (
         <div key={rating} className="flex items-center justify-between mb-1">
@@ -68,13 +32,15 @@ const Reviews: React.FC = () => {
             <Star className="text-yellow-400" size={12} />
           </div>
           <div className="flex-1 ml-4">
-            <div 
-              className="bg-gray-200 h-4 rounded-full"
-              style={{ width: `${percentage}%` }}
-            ></div>
+            <div className="bg-gray-200 h-4 rounded-full overflow-hidden">
+              <div 
+                className="bg-yellow-400 h-full"
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
           </div>
           <div className="w-8 text-right">
-            {count}  
+            {count}
           </div>
         </div>
       );
@@ -101,7 +67,9 @@ const Reviews: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-2">Dr. {user?.email?.split('@')[0] || 'Doctor'}</h1>
+      <h1 className="text-2xl font-bold mb-2">
+        Dr. {user?.email?.split('@')[0] || 'Doctor'}
+      </h1>
       <h2 className="text-lg text-gray-600 mb-6">Patient Reviews & Ratings</h2>
 
       {/* Performance Overview */}
@@ -109,32 +77,39 @@ const Reviews: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Performance Overview</h2>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-yellow-500">{averageRating}</span>
+            <span className="text-2xl font-bold text-yellow-500">
+              {stats?.averageRating.toFixed(1) || '0.0'}
+            </span>
             <div className="flex">
               {[...Array(5)].map((_, i) => (
                 <Star 
                   key={i} 
-                  className={`${i < Math.floor(Number(averageRating)) ? 'text-yellow-400' : 'text-gray-300'}`} 
+                  className={`${
+                    i < Math.floor(stats?.averageRating || 0) 
+                      ? 'text-yellow-400' 
+                      : 'text-gray-300'
+                  }`} 
                   size={20} 
                 />
               ))}
             </div>
-            <span className="text-gray-600">({totalReviews} reviews)</span>
+            <span className="text-gray-600">
+              ({stats?.totalReviews || 0} reviews)
+            </span>
           </div>
         </div>
         
         <div className="flex flex-col md:flex-row gap-8">
-          
           <div className="md:w-1/3">
             <h3 className="font-medium mb-3">Rating Distribution</h3>
             {renderRatingDistribution()}
           </div>
 
-          <div className="hidden md:block border-l border-gray-200"></div>
+          <div className="hidden md:block border-l border-gray-200" />
 
           <div className="md:w-2/3">
             <h3 className="font-medium mb-3">Top Patient Feedback</h3>
-            {Object.entries(performanceInsights.topFeedback).map(([category, tags]) => (
+            {stats?.analysis && Object.entries(stats.analysis.topFeedback).map(([category, tags]) => (
               <div key={category} className="mb-4">
                 <strong className="text-gray-800">{category}</strong>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -150,12 +125,14 @@ const Reviews: React.FC = () => {
               </div>
             ))}
 
-            <div className="mt-6">
-              <h3 className="font-medium mb-2">Summary</h3>
-              <p className="text-gray-700">
-                {performanceInsights.strengths[0]}
-              </p>
-            </div>
+            {stats?.analysis && (
+              <div className="mt-6">
+                <h3 className="font-medium mb-2">Sentiment Analysis</h3>
+                <p className="text-gray-700">
+                  {stats.analysis.sentiment}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -165,9 +142,12 @@ const Reviews: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Patient Reviews</h2>
           <div className="flex gap-4 text-sm">
-            <span className="text-gray-600">All Ratings</span>
-            <span className="text-gray-600">All Reviews</span>
-            <span className="text-gray-600">Newest First</span>
+            <button className="text-gray-600 hover:text-gray-900">
+              All Ratings
+            </button>
+            <button className="text-gray-600 hover:text-gray-900">
+              Latest First
+            </button>
           </div>
         </div>
 
@@ -184,13 +164,19 @@ const Reviews: React.FC = () => {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-medium">Patient #{review.patientId}</h3>
-                  <p className="text-gray-500 text-sm">{formatDate(review.createdAt)}</p>
+                  <p className="text-gray-500 text-sm">
+                    {formatDate(review.createdAt)}
+                  </p>
                 </div>
                 <div className="flex">
                   {[...Array(5)].map((_, i) => (
                     <Star 
                       key={i} 
-                      className={`${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`} 
+                      className={`${
+                        i < review.rating 
+                          ? 'text-yellow-400' 
+                          : 'text-gray-300'
+                      }`} 
                       size={16} 
                     />
                   ))}
@@ -209,7 +195,7 @@ const Reviews: React.FC = () => {
         )}
 
         <div className="text-sm text-gray-500 mt-6">
-          {totalReviews} total reviews
+          {stats?.totalReviews || 0} total reviews
         </div>
       </div>
     </div>
