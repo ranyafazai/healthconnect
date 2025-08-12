@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
-import { fetchUserProfile, updateUserProfile } from "../../../Redux/userSlice/userSlice";
+import { fetchUserProfile } from "../../../Redux/userSlice/userSlice";
+import { updateDoctorProfile } from "../../../Api/doctor.api";
 
 const weekdays = [
   "Monday",
@@ -15,6 +16,8 @@ const weekdays = [
 export default function Availability() {
   const dispatch = useAppDispatch();
   const { profile, loading } = useAppSelector((state) => state.user);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   type DayKey = 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday';
   const dayNameToKey: Record<string, DayKey> = {
@@ -59,20 +62,32 @@ export default function Availability() {
 
   useEffect(() => {
     const availability = profile?.doctorProfile?.availability as any;
-    if (availability) {
+    if (availability && typeof availability === 'object') {
       const next = weekdays.map((day) => {
         const key = dayNameToKey[day];
-        const info = availability[key] || { available: false, hours: [] };
-        const primary = Array.isArray(info.hours) && info.hours.length > 0 ? info.hours[0] : null;
+        const timeSlots = availability[key] || [];
+        
+        // Handle the seed data format: ["08:00-12:00", "13:00-17:00"]
+        let from = "";
+        let to = "";
+        
+        if (Array.isArray(timeSlots) && timeSlots.length > 0) {
+          const firstSlot = timeSlots[0];
+          if (typeof firstSlot === 'string' && firstSlot.includes('-')) {
+            const [start, end] = firstSlot.split('-');
+            from = start;
+            to = end;
+          }
+        }
+        
         return {
           day,
-          available: !!info.available,
-          from: primary?.start || "",
-          to: primary?.end || "",
+          available: timeSlots.length > 0,
+          from,
+          to,
         };
       });
       setSchedule(next);
-      // Optional: map duration/buffer if embedded in availability
     }
   }, [profile]);
 
@@ -98,38 +113,64 @@ export default function Availability() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Map UI schedule back to backend JSON structure
-    const availability: Record<DayKey, { available: boolean; hours: Array<{ start: string; end: string }> }> = {
-      monday: { available: false, hours: [] },
-      tuesday: { available: false, hours: [] },
-      wednesday: { available: false, hours: [] },
-      thursday: { available: false, hours: [] },
-      friday: { available: false, hours: [] },
-      saturday: { available: false, hours: [] },
-      sunday: { available: false, hours: [] },
+    
+    if (!profile?.doctorProfile?.id) {
+      setUpdateMessage({ type: 'error', text: 'Doctor profile ID not found' });
+      return;
+    }
+
+    setIsUpdating(true);
+    setUpdateMessage(null);
+
+    // Map UI schedule back to backend JSON structure (matching seed data format)
+    const availability: Record<DayKey, string[]> = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: [],
     };
 
     for (const row of schedule) {
       const key = dayNameToKey[row.day];
-      const hours = row.available && row.from && row.to ? [{ start: row.from, end: row.to }] : [];
-      availability[key] = { available: row.available, hours };
+      if (row.available && row.from && row.to) {
+        availability[key] = [`${row.from}-${row.to}`];
+      }
     }
 
-    // The backend accepts updating doctor profile via user update or doctor update.
-    // Here we reuse updateUserProfile to send nested doctorProfile updates.
-    await dispatch(
-      updateUserProfile({
-        doctorProfile: {
-          availability,
-          // Optionally store settings if supported by backend in availability or separate fields
-        } as any,
-      } as any)
-    );
+    try {
+      // Use the correct doctor API endpoint
+      await updateDoctorProfile(profile.doctorProfile.id, {
+        availability: JSON.stringify(availability)
+      });
+      
+      // Refresh the user profile to get updated data
+      dispatch(fetchUserProfile());
+      setUpdateMessage({ type: 'success', text: 'Availability updated successfully!' });
+    } catch (error) {
+      console.error('Failed to update availability:', error);
+      setUpdateMessage({ type: 'error', text: 'Failed to update availability. Please try again.' });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
       <h2 className="text-lg font-semibold mb-4">Availability Settings</h2>
+      
+      {/* Success/Error Messages */}
+      {updateMessage && (
+        <div className={`mb-4 p-3 rounded-md ${
+          updateMessage.type === 'success' 
+            ? 'bg-green-100 text-green-700 border border-green-300' 
+            : 'bg-red-100 text-red-700 border border-red-300'
+        }`}>
+          {updateMessage.text}
+        </div>
+      )}
 
       {/* Weekly Schedule */}
       <div className="border border-blue-100 bg-blue-50 p-4 rounded-md mb-6">
@@ -227,9 +268,10 @@ export default function Availability() {
         </button>
         <button
           type="submit"
-          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700"
+          disabled={isUpdating}
+          className="bg-cyan-600 text-white px-4 py-2 rounded-md hover:bg-cyan-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Save Changes
+          {isUpdating ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
     </form>

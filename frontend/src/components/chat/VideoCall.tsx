@@ -86,12 +86,17 @@ export default function VideoCall({
 
   const initializeWebRTC = async () => {
     try {
-      const configuration = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      };
+      // Fetch dynamic ICE servers from backend (includes TURN if configured)
+      let configuration: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      try {
+        const res = await fetch('/api/webrtc-config');
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg?.iceServers && Array.isArray(cfg.iceServers)) {
+            configuration = { iceServers: cfg.iceServers } as RTCConfiguration;
+          }
+        }
+      } catch {}
 
       peerConnectionRef.current = new RTCPeerConnection(configuration);
 
@@ -142,15 +147,27 @@ export default function VideoCall({
         socketRef.current?.emit('join-call', { appointmentId, roomId });
       });
 
-      socketRef.current.on('call-joined', (data: any) => {
-        console.log('Joined call:', data);
+      socketRef.current.on('call-joined', async (data: any) => {
+        // joined call
         if (data.roomId) {
-          // Room joined successfully
+          // Initiator flow: create and send offer if we are the earlier joiner
+          try {
+            if (peerConnectionRef.current) {
+              const offer = await peerConnectionRef.current.createOffer();
+              await peerConnectionRef.current.setLocalDescription(offer);
+              socketRef.current?.emit('offer', {
+                targetUserId: otherUserId,
+                offer
+              });
+            }
+          } catch (e) {
+            console.error('Error creating initial offer:', e);
+          }
         }
       });
 
       socketRef.current.on('user-joined-call', (data: any) => {
-        console.log('User joined call:', data);
+        // peer joined
         // Other user joined the call
       });
 

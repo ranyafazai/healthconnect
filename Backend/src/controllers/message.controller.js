@@ -89,6 +89,20 @@ class MessageController {
     }
   }
 
+  // Get unread message count for current user
+  async getUnreadCount(req, res) {
+    try {
+      const userId = req.user.id;
+      const count = await prisma.message.count({
+        where: { receiverId: parseInt(userId), isRead: false }
+      });
+      return res.json(successResponse({ count }, 'Unread message count retrieved successfully'));
+    } catch (error) {
+      console.error('Get unread count error:', error);
+      return res.status(500).json(serverErrorResponse('Failed to get unread count'));
+    }
+  }
+
   // Send message
   async sendMessage(req, res) {
     try {

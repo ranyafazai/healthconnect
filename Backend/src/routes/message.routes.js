@@ -10,6 +10,9 @@ router.get('/conversation/:userId', authMiddleware, messageController.getConvers
 // Get messages by appointment
 router.get('/appointment/:appointmentId', authMiddleware, messageController.getMessagesByAppointment);
 
+// Get unread count for current user
+router.get('/unread/count', authMiddleware, messageController.getUnreadCount);
+
 // Send message
 router.post('/', authMiddleware, messageController.sendMessage);
 

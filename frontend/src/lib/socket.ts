@@ -1,5 +1,6 @@
 // frontend/src/lib/socket.ts
 import { io, type Socket } from 'socket.io-client';
+import toast from 'react-hot-toast';
 
 function resolveBaseUrl(): string {
   // Prefer explicit socket URL
@@ -18,7 +19,29 @@ export function getSocket(namespace: '/chat' | '/video-call' | '/notifications' 
   const socket = io(url, {
     transports: ['websocket'],
     withCredentials: true,
+    auth: () => {
+      const token = localStorage.getItem('token');
+      return token ? { token } : {};
+    },
+    autoConnect: true,
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 500,
   });
+  // UX hints
+  socket.on('connect', () => {
+    try { toast.success('Connected to realtime service'); } catch {}
+  });
+  socket.on('disconnect', () => {
+    try { toast.error('Disconnected. Reconnecting...'); } catch {}
+  });
+  socket.on('reconnect', () => {
+    try { toast.success('Reconnected'); } catch {}
+  });
+  // Reconnection UX hooks (no-op placeholders; UI can subscribe if needed)
+  socket.on('reconnect_attempt', () => {});
+  socket.on('reconnect_failed', () => {});
+  // Basic connection lifecycle logging
   return socket;
 }
 

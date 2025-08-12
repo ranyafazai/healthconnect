@@ -18,22 +18,22 @@ function generateDoctorProfile() {
   
   const specialization = faker.helpers.arrayElement(specializations);
   
-  // Generate more realistic and varied availability
+  // Generate availability aligned with UI (array of strings "HH:MM-HH:MM")
   const generateAvailability = () => {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const availability = {};
-    
     days.forEach(day => {
-              if (faker.helpers.maybe(() => true, { probability: 0.8 })) { // 80% chance of being available
-        const morningStart = faker.helpers.arrayElement(['08:00', '08:30', '09:00', '09:30']);
+      const open = faker.helpers.maybe(() => true, { probability: 0.7 });
+      if (open) {
+        const morningStart = faker.helpers.arrayElement(['08:00', '08:30', '09:00']);
         const morningEnd = faker.helpers.arrayElement(['12:00', '12:30', '13:00']);
         const afternoonStart = faker.helpers.arrayElement(['13:30', '14:00', '14:30']);
-        const afternoonEnd = faker.helpers.arrayElement(['17:00', '17:30', '18:00', '18:30']);
-        
+        const afternoonEnd = faker.helpers.arrayElement(['17:00', '17:30', '18:00']);
         availability[day] = [`${morningStart}-${morningEnd}`, `${afternoonStart}-${afternoonEnd}`];
+      } else {
+        availability[day] = [];
       }
     });
-    
     return availability;
   };
 

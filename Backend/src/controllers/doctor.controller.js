@@ -398,7 +398,15 @@ class DoctorController {
       }
 
       if (updateData.availability) {
-        updateData.availability = JSON.parse(updateData.availability);
+        // Handle availability as either JSON string or object
+        if (typeof updateData.availability === 'string') {
+          try {
+            updateData.availability = JSON.parse(updateData.availability);
+          } catch (error) {
+            console.error('Error parsing availability JSON:', error);
+            return res.status(400).json(errorResponse('Invalid availability format', 400));
+          }
+        }
       }
 
       const doctor = await prisma.doctorProfile.update({
