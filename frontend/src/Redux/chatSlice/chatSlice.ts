@@ -44,7 +44,7 @@ export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
     chatSocket.emit('join-appointment', appointmentId);
     console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
   } else {
-    
+    // Socket not connected
   }
 };
 
@@ -86,7 +86,7 @@ export const connectChat = createAsyncThunk(
         
         console.log('📨 Message dispatched to Redux state for user:', currentUserId);
       } else {
-        
+        // Message not for this user
       }
     };
 
@@ -95,17 +95,19 @@ export const connectChat = createAsyncThunk(
       
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        
         dispatch(addMessage(msg));
-        
       } else {
-        
+        // Message not for this user
       }
     };
 
-    const onJoined = (data: { userId: number; role: string }) => {};
+    const onJoined = () => {
+      // User joined chat room
+    };
 
-    const onAppointmentJoined = (data: { appointmentId: number }) => {};
+    const onAppointmentJoined = () => {
+      // User joined appointment room
+    };
 
     // Bind all events
     chatSocket.on('joined', onJoined);
@@ -118,7 +120,11 @@ export const connectChat = createAsyncThunk(
       dispatch(setIsConnected(true));
       chatSocket.emit('join-user', currentUserId);
       // Fetch unread count upon connect
-      try { axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); } catch {}
+      try { 
+        axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); 
+      } catch {
+        // Ignore unread count fetch errors
+      }
     });
 
     chatSocket.on('disconnect', () => {
@@ -135,7 +141,7 @@ export const connectChat = createAsyncThunk(
       
       chatSocket.emit('join-user', currentUserId);
     } else {
-      
+      // Socket not yet connected, waiting for connect event
     }
   }
 );
@@ -275,7 +281,7 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations } = chatSlice.actions;
+export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations, setUnreadCount } = chatSlice.actions;
 
 export const selectChat = (state: RootState) => state.chat as ChatState;
 
