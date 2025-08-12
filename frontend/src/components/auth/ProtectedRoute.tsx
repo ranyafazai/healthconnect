@@ -22,7 +22,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check if user is authenticated
   if (!isAuthenticated || !user) {
-    console.log('ProtectedRoute: User not authenticated, redirecting to:', fallbackPath);
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
@@ -33,12 +32,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check permission requirements
   if (requiredPermissions.length > 0) {
-    console.log('ProtectedRoute: Checking permissions:', { requiredPermissions, user });
     const { isAuthorized, redirectTo } = getProtectedRouteProps(user, requiredPermissions);
-    console.log('ProtectedRoute: Permission check result:', { isAuthorized, redirectTo });
-    
     if (!isAuthorized) {
-      console.log('ProtectedRoute: Permission check failed, redirecting to:', redirectTo || fallbackPath);
       return <Navigate to={redirectTo || fallbackPath} state={{ from: location }} replace />;
     }
   }

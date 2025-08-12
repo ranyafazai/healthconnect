@@ -68,13 +68,14 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
+  // Default error with standardized response
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal server error';
-
   res.status(statusCode).json({
-    error: 'Server error',
+    success: false,
     message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : message,
+    statusCode,
+    timestamp: new Date().toISOString(),
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
 };

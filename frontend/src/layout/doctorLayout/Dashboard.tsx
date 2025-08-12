@@ -28,6 +28,7 @@ export default function Dashboard() {
   const { appointments, loading: appointmentsLoading } = useAppSelector((state: RootState) => state.appointment);
   const { notifications } = useAppSelector((state: RootState) => state.notification);
   const { reviews } = useAppSelector((state: RootState) => state.review);
+  const { unreadCount } = useAppSelector((state: RootState) => state.chat as any);
 
   useEffect(() => {
     if (user?.id) {
@@ -43,7 +44,6 @@ export default function Dashboard() {
   useEffect(() => {
     const handleFocus = () => {
       if (user?.doctorProfile?.id) {
-        console.log('Doctor Dashboard focus - refreshing appointments for doctor profile:', user.doctorProfile.id);
         dispatch(fetchAppointmentsByDoctor(user.doctorProfile.id));
       }
     };
@@ -69,6 +69,22 @@ export default function Dashboard() {
   
   const unreadNotifications = notifications.filter(notif => !notif.isRead);
 
+  // Build rating distribution and top reviews using fetched reviews
+  const ratingDistribution = React.useMemo(() => {
+    const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of reviews as any[]) {
+      const rating = Math.max(1, Math.min(5, Number((r as any).rating) || 0));
+      dist[rating] = (dist[rating] || 0) + 1;
+    }
+    return dist;
+  }, [reviews]);
+
+  const topReviews = React.useMemo(() => {
+    return [...(reviews as any[])]
+      .sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0))
+      .slice(0, 3);
+  }, [reviews]);
+
   
   // Use stored average rating if available, otherwise calculate from reviews
   const averageRating = user?.doctorProfile?.avgReview 
@@ -92,7 +108,7 @@ export default function Dashboard() {
     },
     { 
       title: "Unread Messages", 
-      value: unreadNotifications.length, 
+      value: typeof unreadCount === 'number' ? unreadCount : 0, 
       icon: <MessageSquare className="text-yellow-500" size={20} />,
       color: "text-yellow-500"
     },
@@ -157,6 +173,50 @@ export default function Dashboard() {
         >
           View All Appointments
         </button>
+      </div>
+
+      {/* Reviews Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Rating Distribution */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <h3 className="font-semibold mb-3">Rating Distribution</h3>
+          <div className="space-y-2">
+            {[5,4,3,2,1].map((star) => {
+              const count = ratingDistribution[star] || 0;
+              const total = (reviews as any[]).length || 1;
+              const pct = Math.round((count * 100) / total);
+              return (
+                <div key={star} className="flex items-center gap-3">
+                  <span className="w-8 text-sm">{star}★</span>
+                  <div className="flex-1 h-3 bg-gray-100 rounded">
+                    <div className="h-3 bg-yellow-400 rounded" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-10 text-right text-sm text-gray-600">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Top Reviews */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <h3 className="font-semibold mb-3">Top Reviews</h3>
+          <div className="space-y-3">
+            {(topReviews as any[]).length === 0 && (
+              <div className="text-sm text-gray-500">No reviews yet.</div>
+            )}
+            {(topReviews as any[]).map((r: any) => (
+              <div key={r.id} className="border border-gray-200 rounded p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className={i < (r.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}>★</span>
+                  ))}
+                </div>
+                <div className="text-sm text-gray-700">{r.comment || 'No comment provided.'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards */}

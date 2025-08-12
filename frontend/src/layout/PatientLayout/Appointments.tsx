@@ -1,24 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone } from 'lucide-react';
-import type { RootState, AppDispatch } from '../../Redux/store';
-import { fetchAppointmentsByPatient, updateAppointmentStatus, deleteAppointment } from '../../Redux/appointmentSlice/appointmentSlice';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User } from 'lucide-react';
+import type { RootState } from '../../Redux/store';
+import { fetchAppointmentsByPatient, updateAppointmentStatus, deleteAppointment, setPage } from '../../Redux/appointmentSlice/appointmentSlice';
 import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
-  const { appointments, loading } = useAppSelector((state: RootState) => state.appointment);
+  const { appointments, loading, page, limit, total } = useAppSelector((state: RootState) => state.appointment);
   
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
-      console.log('Fetching appointments for patient ID:', user.patientProfile.id);
       dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
     }
-  }, [dispatch, user?.patientProfile?.id]);
+  }, [dispatch, user?.patientProfile?.id, page, limit]);
+
+  const onPrevPage = () => {
+    if (page && page > 1) dispatch(setPage(page - 1));
+  };
+
+  const onNextPage = () => {
+    const totalPages = total && limit ? Math.ceil(total / limit) : 1;
+    if (page && page < totalPages) dispatch(setPage(page + 1));
+  };
 
   // Filter appointments for the current month
   const currentMonthAppointments = appointments.filter(apt => {
@@ -199,77 +207,98 @@ const Appointments: React.FC = () => {
       </div>
       
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Today's Schedule</h2>
-        
+        <h2 className="text-xl font-semibold mb-4">Appointments</h2>
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="text-gray-500">Loading appointments...</div>
           </div>
-        ) : todayAppointments.length === 0 ? (
-          <p className="text-gray-500">No appointments scheduled for today</p>
+        ) : appointments.length === 0 ? (
+          <p className="text-gray-500">No appointments found</p>
         ) : (
-          <div className="space-y-4">
-            {todayAppointments.map(appointment => (
-              <div 
-                key={appointment.id} 
-                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar className="text-gray-400" size={16} />
-                      <span className="font-semibold">Appointment #{appointment.id}</span>
+          <>
+            <div className="space-y-4">
+              {appointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="text-gray-400" size={16} />
+                        <span className="font-semibold">{new Date(appointment.date).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="text-gray-400" size={16} />
+                        <span className="text-gray-600">{formatTime(String(appointment.date))}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="text-gray-400" size={16} />
+                        <span className="text-gray-600">Doctor #{appointment.doctorId}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Type: {appointment.type}</span>
+                      </div>
+                      {appointment.reason && (
+                        <p className="text-gray-600 mt-2 text-sm">Reason: {appointment.reason}</p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="text-gray-400" size={16} />
-                      <span className="text-gray-600">{formatTime(String(appointment.date))}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="text-gray-400" size={16} />
-                      <span className="text-gray-600">Doctor #{appointment.doctorId}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">Type: {appointment.type}</span>
-                    </div>
-                    {appointment.reason && (
-                      <p className="text-gray-600 mt-2 text-sm">Reason: {appointment.reason}</p>
-                    )}
-                  </div>
-                  <div className="text-right ml-4">
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(appointment.status)}`}>
-                      {appointment.status}
-                    </span>
-                    <div className="mt-2 space-y-1">
-                      {appointment.status === 'PENDING' && (
-                        <>
-                          <button
-                            onClick={() => handleStatusUpdate(appointment.id, 'CONFIRMED')}
-                            className="block w-full text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
-                          >
-                            Confirm
-                          </button>
+                    <div className="text-right ml-4">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(appointment.status)}`}>
+                        {appointment.status}
+                      </span>
+                      <div className="mt-2 space-y-1">
+                        {appointment.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusUpdate(appointment.id, 'CONFIRMED')}
+                              className="block w-full text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAppointment(appointment.id)}
+                              className="block w-full text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {appointment.status === 'CONFIRMED' && (
                           <button
                             onClick={() => handleDeleteAppointment(appointment.id)}
                             className="block w-full text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                           >
                             Cancel
                           </button>
-                        </>
-                      )}
-                      {appointment.status === 'CONFIRMED' && (
-                        <button
-                          onClick={() => handleDeleteAppointment(appointment.id)}
-                          className="block w-full text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mt-6">
+              <button
+                onClick={onPrevPage}
+                disabled={!page || page <= 1}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <div className="text-sm text-gray-600">
+                Page {page || 1} of {total && limit ? Math.max(1, Math.ceil(total / limit)) : 1}
               </div>
-            ))}
-          </div>
+              <button
+                onClick={onNextPage}
+                disabled={!total || !limit || !page || page >= Math.ceil((total || 0) / (limit || 1))}
+                className="px-3 py-1 rounded border disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

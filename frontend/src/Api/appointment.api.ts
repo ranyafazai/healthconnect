@@ -32,15 +32,68 @@ export const createAppointment = (data: {
   notes?: string;
 }) => axios.post<{ data: { data: Appointment } }>('/appointments', data);
 
-export const getAppointments = () => 
-  axios.get<{ data: { data: Appointment[] } }>('/appointments');
+export const getAppointments = () => {
+  const url = '/appointments';
+  // Debug: request log
+  console.log('[appointments] GET', url);
+  return axios
+    .get<{ data: { data: Appointment[] } }>(url)
+    .then((res) => {
+      // Debug: response log
+      console.log('[appointments] OK', { status: res.status, url, data: res.data });
+      return res;
+    })
+    .catch((err) => {
+      // Debug: error log
+      console.error('[appointments] ERR', {
+        url,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      throw err;
+    });
+};
 
-export const getAppointmentsByDoctor = (doctorId: number) => 
-  axios.get<{ data: { data: Appointment[] } }>(`/appointments/doctor/${doctorId}`);
+export const getAppointmentsByDoctor = (doctorId: number, page = 1, limit = 50) => {
+  const url = `/appointments/doctor/${doctorId}?page=${page}&limit=${limit}`;
+  console.log('[appointments] GET', url);
+  return axios
+    .get<{ data: { data: Appointment[] } }>(url)
+    .then((res) => {
+      console.log('[appointments] OK', { status: res.status, url, data: res.data });
+      return res;
+    })
+    .catch((err) => {
+      console.error('[appointments] ERR', {
+        url,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      throw err;
+    });
+};
 
-export const getAppointmentsByPatient = (patientId: number) => 
-  axios.get<{ data: { data: Appointment[] } }>(`/appointments/patient/${patientId}`);
-
+export const getAppointmentsByPatient = (patientId: number, page = 1, limit = 50) => {
+  const url = `/appointments/patient/${patientId}?page=${page}&limit=${limit}`;
+  console.log('[appointments] GET', url);
+  return axios
+    .get<{ data: { data: Appointment[] } }>(url)
+    .then((res) => {
+      console.log('[appointments] OK', { status: res.status, url, data: res.data });
+      return res;
+    })
+    .catch((err) => {
+      console.error('[appointments] ERR', {
+        url,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      throw err;
+    });
+};
 export const getPastConsultations = (patientId: number, status?: string, limit?: number, offset?: number) => 
   axios.get<{ data: { data: UIConsultation[] } }>(`/appointments/past-consultations/${patientId}`, {
     params: { status, limit, offset }
@@ -48,6 +101,7 @@ export const getPastConsultations = (patientId: number, status?: string, limit?:
 
 export const getAppointmentById = (id: number) => 
   axios.get<{ data: { data: Appointment } }>(`/appointments/${id}`);
+
 
 export const updateAppointmentStatus = (id: number, status: AppointmentStatus) => 
   axios.patch<{ data: { data: Appointment } }>(`/appointments/${id}/status`, { status });

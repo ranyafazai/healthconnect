@@ -7,7 +7,8 @@ import {
   serverErrorResponse,
   createdResponse,
   appointmentResponse,
-  listResponse
+  listResponse,
+  paginatedResponse
 } from '../utils/responseFormatter.js';
 import { faker } from '@faker-js/faker';
 
@@ -135,9 +136,14 @@ class AppointmentController {
         return res.status(400).json(errorResponse('Doctor ID is required', 400));
       }
 
-      const appointments = await prisma.appointment.findMany({
-        where: { doctorId: parseInt(doctorId) },
-        include: {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const skip = (page - 1) * limit;
+
+      const [appointments, total] = await Promise.all([
+        prisma.appointment.findMany({
+          where: { doctorId: parseInt(doctorId) },
+          include: {
           doctor: {
             include: {
               user: true
@@ -148,11 +154,15 @@ class AppointmentController {
               user: true
             }
           }
-        },
-        orderBy: { date: 'desc' }
-      });
+          },
+          orderBy: { date: 'desc' },
+          skip,
+          take: limit
+        }),
+        prisma.appointment.count({ where: { doctorId: parseInt(doctorId) } })
+      ]);
 
-      return res.json(listResponse(appointments, 'Doctor appointments retrieved successfully', appointments.length));
+      return res.json(paginatedResponse(appointments, page, limit, total, 'Doctor appointments retrieved successfully'));
     } catch (error) {
       console.error('Get doctor appointments error:', error);
       return res.status(500).json(serverErrorResponse('Failed to get doctor appointments'));
@@ -168,19 +178,28 @@ class AppointmentController {
         return res.status(400).json(errorResponse('Patient ID is required', 400));
       }
 
-      const appointments = await prisma.appointment.findMany({
-        where: { patientId: parseInt(patientId) },
-        include: {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const skip = (page - 1) * limit;
+
+      const [appointments, total] = await Promise.all([
+        prisma.appointment.findMany({
+          where: { patientId: parseInt(patientId) },
+          include: {
           doctor: {
             include: {
               user: true
             }
           }
-        },
-        orderBy: { date: 'desc' }
-      });
+          },
+          orderBy: { date: 'desc' },
+          skip,
+          take: limit
+        }),
+        prisma.appointment.count({ where: { patientId: parseInt(patientId) } })
+      ]);
 
-      return res.json(listResponse(appointments, 'Patient appointments retrieved successfully', appointments.length));
+      return res.json(paginatedResponse(appointments, page, limit, total, 'Patient appointments retrieved successfully'));
     } catch (error) {
       console.error('Get patient appointments error:', error);
       return res.status(500).json(serverErrorResponse('Failed to get patient appointments'));
@@ -275,8 +294,13 @@ class AppointmentController {
   // Get all appointments (admin function)
   async getAllAppointments(req, res) {
     try {
-      const appointments = await prisma.appointment.findMany({
-        include: {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const skip = (page - 1) * limit;
+
+      const [appointments, total] = await Promise.all([
+        prisma.appointment.findMany({
+          include: {
           doctor: {
             include: {
               user: true
@@ -287,11 +311,15 @@ class AppointmentController {
               user: true
             }
           }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit
+        }),
+        prisma.appointment.count()
+      ]);
 
-      return res.json(listResponse(appointments, 'All appointments retrieved successfully', appointments.length));
+      return res.json(paginatedResponse(appointments, page, limit, total, 'All appointments retrieved successfully'));
     } catch (error) {
       console.error('Get all appointments error:', error);
       return res.status(500).json(serverErrorResponse('Failed to get all appointments'));

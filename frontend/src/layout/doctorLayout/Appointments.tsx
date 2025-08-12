@@ -17,15 +17,8 @@ const Appointments: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
-    console.log('Doctor Appointments useEffect - user:', user);
-    console.log('Doctor Appointments useEffect - user?.doctorProfile:', user?.doctorProfile);
-    console.log('Doctor Appointments useEffect - user?.doctorProfile?.id:', user?.doctorProfile?.id);
-    
     if (user?.doctorProfile?.id) {
-      console.log('Dispatching fetchAppointmentsByDoctor with ID:', user.doctorProfile.id);
       dispatch(fetchAppointmentsByDoctor(user.doctorProfile.id));
-    } else {
-      console.warn('No doctor profile ID found, cannot fetch appointments');
     }
   }, [dispatch, user?.doctorProfile?.id]);
 

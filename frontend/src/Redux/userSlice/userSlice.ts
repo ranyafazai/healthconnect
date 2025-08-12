@@ -25,9 +25,14 @@ export const fetchUserProfile = createAsyncThunk(
 
 export const updateUserProfile = createAsyncThunk(
   'user/updateProfile',
-  async (profileData: Partial<User>) => {
-    const response = await userApi.updateUserProfile(profileData);
-    return response.data?.data;
+  async (profileData: Partial<User>, { rejectWithValue }) => {
+    try {
+      const response = await userApi.updateUserProfile(profileData);
+      return response.data?.data;
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err.message || 'Failed to update profile';
+      return rejectWithValue(message);
+    }
   }
 );
 
