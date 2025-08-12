@@ -10,6 +10,7 @@ export interface Review {
   appointmentId?: string;
   createdAt: Date;
   updatedAt: Date;
+  patient?: PatientProfile;
 }
 
 export interface ReviewAnalysis {

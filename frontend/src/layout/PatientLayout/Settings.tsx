@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
+import { fetchUserSettings, updateUserSettingsAsync } from '../../Redux/userSettingsSlice/userSettingsSlice';
 import { 
   Bell, 
   Shield, 
@@ -17,6 +18,7 @@ import {
 export default function Settings() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
+  const { settings, loading, error, updating } = useAppSelector((state: RootState) => state.userSettings);
   
   const [activeTab, setActiveTab] = useState('notifications');
   const [isEditing, setIsEditing] = useState(false);
@@ -34,7 +36,7 @@ export default function Settings() {
 
   // Privacy settings
   const [privacySettings, setPrivacySettings] = useState({
-    profileVisibility: 'DOCTORS_ONLY',
+    profileVisibility: 'DOCTORS_ONLY' as 'DOCTORS_ONLY' | 'ALL_USERS' | 'PRIVATE',
     shareMedicalHistory: true,
     allowDataAnalytics: false,
     shareForResearch: false
@@ -46,6 +48,39 @@ export default function Settings() {
     sessionTimeout: 30,
     loginNotifications: true
   });
+
+  // Load user settings on component mount
+  useEffect(() => {
+    dispatch(fetchUserSettings());
+  }, [dispatch]);
+
+  // Update local state when settings are loaded from backend
+  useEffect(() => {
+    if (settings) {
+      setNotificationSettings({
+        emailNotifications: settings.emailNotifications,
+        smsNotifications: settings.smsNotifications,
+        pushNotifications: settings.pushNotifications,
+        appointmentReminders: settings.appointmentReminders,
+        messageNotifications: settings.messageNotifications,
+        healthTips: settings.healthTips,
+        marketingEmails: settings.marketingEmails
+      });
+
+      setPrivacySettings({
+        profileVisibility: settings.profileVisibility,
+        shareMedicalHistory: settings.shareMedicalHistory,
+        allowDataAnalytics: settings.allowDataAnalytics,
+        shareForResearch: settings.shareForResearch
+      });
+
+      setSecuritySettings({
+        twoFactorAuth: settings.twoFactorAuth,
+        sessionTimeout: settings.sessionTimeout,
+        loginNotifications: settings.loginNotifications
+      });
+    }
+  }, [settings]);
 
   const handleNotificationChange = (key: string, value: boolean) => {
     setNotificationSettings(prev => ({
@@ -70,13 +105,18 @@ export default function Settings() {
 
   const handleSaveSettings = async () => {
     try {
-      // TODO: Implement API call to save settings
-      console.log('Saving settings:', { notificationSettings, privacySettings, securitySettings });
+      const allSettings = {
+        ...notificationSettings,
+        ...privacySettings,
+        ...securitySettings
+      };
+
+      await dispatch(updateUserSettingsAsync(allSettings)).unwrap();
       setIsEditing(false);
-      // Show success message
+      // Settings will be automatically updated in the Redux store
     } catch (error) {
       console.error('Failed to save settings:', error);
-      // Show error message
+      // Error is handled by Redux slice
     }
   };
 
@@ -86,6 +126,40 @@ export default function Settings() {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'account', label: 'Account', icon: Lock }
   ];
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <p className="text-lg font-medium">Error loading settings</p>
+            <p className="text-sm">{error}</p>
+          </div>
+          <button
+            onClick={() => dispatch(fetchUserSettings())}
+            className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
@@ -103,10 +177,20 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700"
+                disabled={updating}
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                Save Changes
+                {updating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
               </button>
             </>
           ) : (
