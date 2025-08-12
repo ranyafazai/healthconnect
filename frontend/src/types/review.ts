@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 export interface ReviewAnalysis {
   topFeedback: {
     [key: string]: string[];
@@ -15,8 +14,3 @@ export interface ReviewsStats {
   };
   analysis: ReviewAnalysis;
 }
-=======
-
-
-
->>>>>>> 0731deabc8a1bad4869088665d0efdfbe97c440d

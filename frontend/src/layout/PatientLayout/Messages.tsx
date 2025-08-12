@@ -262,7 +262,7 @@ const Messages: React.FC = () => {
                   <p className="text-sm text-gray-500">
                     {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' 
                       ? 'Appointment Conversation' 
-                      : 'Doctor Conversation'}
+                      : 'Patient Conversation'}
                   </p>
                   {/* Debug: Message counter */}
                   <p className="text-xs text-blue-600 mt-1">

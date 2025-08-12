@@ -5,6 +5,7 @@ import { fetchAppointments } from '../Redux/appointmentSlice/appointmentSlice';
 import { createAppointment } from '../Redux/appointmentSlice/appointmentSlice';
 import { formatDate, formatDateTime } from '../lib/utils';
 
+
 const ExampleUsage: React.FC = () => {
   const dispatch = useAppDispatch();
   
@@ -180,6 +181,8 @@ const ExampleUsage: React.FC = () => {
           )}
         </div>
       </div>
+
+
 
       {/* Redux State Debug */}
       <div className="bg-gray-100 rounded-lg p-6">
