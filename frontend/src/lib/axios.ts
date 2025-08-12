@@ -10,7 +10,8 @@ const instance = axios.create({
 // Request interceptor for adding auth token
 instance.interceptors.request.use(
   (config) => {
-    // You can add auth token here if needed
+    // For cookie-based auth, we don't need to manually add the token
+    // The cookie will be sent automatically with withCredentials: true
     return config;
   },
   (error) => {
@@ -28,7 +29,8 @@ instance.interceptors.response.use(
     // Authentication checks should fail gracefully without redirecting
     if (error.response?.status === 401 && !error.config?.url?.includes('/auth/me')) {
       // Handle unauthorized access for non-auth endpoints
-      window.location.href = '/auth/signin';
+      // Use window.location.href only as a last resort
+      console.warn('Unauthorized access detected, but not redirecting to prevent infinite loops');
     }
     return Promise.reject(error);
   }
