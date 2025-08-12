@@ -224,11 +224,30 @@ async function main() {
     }
 
     // Create appointments
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 100; i++) {
       const doctor = faker.helpers.arrayElement(doctors);
       const patient = faker.helpers.arrayElement(patients);
       
-      const appointmentStatus = faker.helpers.arrayElement(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']);
+      // Generate more past appointments (70% chance of being past)
+      const isPastAppointment = faker.helpers.maybe(() => true, { probability: 0.7 });
+      
+      let appointmentDate;
+      if (isPastAppointment) {
+        // Past appointments: from 1 day ago to 2 years ago
+        appointmentDate = faker.date.past({ years: 2 });
+      } else {
+        // Future appointments: from tomorrow to 6 months ahead
+        appointmentDate = faker.date.future({ years: 0.5 });
+      }
+      
+      // For past appointments, mostly COMPLETED or CANCELLED
+      let appointmentStatus;
+      if (isPastAppointment) {
+        appointmentStatus = faker.helpers.arrayElement(['COMPLETED', 'COMPLETED', 'COMPLETED', 'CANCELLED', 'PENDING']);
+      } else {
+        appointmentStatus = faker.helpers.arrayElement(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']);
+      }
+      
       const appointmentType = faker.helpers.arrayElement(['TEXT', 'VIDEO']);
       
       // Generate realistic appointment reasons based on specialization
@@ -236,43 +255,73 @@ async function main() {
       const reasonTemplates = {
         'Cardiology': [
           'Chest pain evaluation', 'Heart rhythm check', 'Blood pressure consultation',
-          'Cardiac symptoms review', 'Heart health checkup', 'ECG interpretation'
+          'Cardiac symptoms review', 'Heart health checkup', 'ECG interpretation',
+          'Shortness of breath', 'Heart palpitations', 'Cardiac stress test',
+          'Coronary artery disease screening', 'Heart failure management'
         ],
         'Family Medicine': [
           'Annual physical exam', 'Cold and flu symptoms', 'Chronic disease management',
-          'Preventive care visit', 'General health concerns', 'Medication review'
+          'Preventive care visit', 'General health concerns', 'Medication review',
+          'Diabetes management', 'Hypertension check', 'Vaccination',
+          'Wellness consultation', 'Minor injury treatment'
         ],
         'Dermatology': [
           'Skin rash evaluation', 'Mole examination', 'Acne treatment',
-          'Skin cancer screening', 'Dermatological consultation', 'Skin condition review'
+          'Skin cancer screening', 'Dermatological consultation', 'Skin condition review',
+          'Eczema flare-up', 'Psoriasis management', 'Wart removal',
+          'Hair loss consultation', 'Nail disorder evaluation'
         ],
         'Neurology': [
           'Headache evaluation', 'Neurological symptoms', 'Memory concerns',
-          'Nerve pain assessment', 'Neurological exam', 'Brain health consultation'
+          'Nerve pain assessment', 'Neurological exam', 'Brain health consultation',
+          'Seizure evaluation', 'Tremor assessment', 'Multiple sclerosis management',
+          'Stroke follow-up', 'Epilepsy consultation'
         ],
         'Pediatrics': [
           'Child wellness check', 'Vaccination', 'Growth and development',
-          'Childhood illness', 'Behavioral concerns', 'Nutrition consultation'
+          'Childhood illness', 'Behavioral concerns', 'Nutrition consultation',
+          'Fever evaluation', 'Ear infection', 'Asthma management',
+          'ADHD assessment', 'Developmental milestone check'
+        ],
+        'Psychiatry': [
+          'Anxiety management', 'Depression evaluation', 'Stress counseling',
+          'Mood disorder assessment', 'PTSD consultation', 'Bipolar disorder management',
+          'Sleep disorder evaluation', 'Addiction counseling', 'Family therapy',
+          'Medication management', 'Crisis intervention'
+        ],
+        'Orthopedics': [
+          'Joint pain evaluation', 'Fracture assessment', 'Sports injury',
+          'Back pain consultation', 'Arthritis management', 'Surgery follow-up',
+          'Physical therapy referral', 'Mobility assessment', 'Pain management',
+          'Injury rehabilitation'
+        ],
+        'Gynecology': [
+          'Annual checkup', 'Pregnancy consultation', 'Menstrual disorder',
+          'Fertility evaluation', 'Menopause management', 'Pelvic pain',
+          'Breast examination', 'Family planning', 'STI screening',
+          'Gynecological surgery follow-up'
         ]
       };
       
       const reasons = reasonTemplates[specialization] || [
         'General consultation', 'Health checkup', 'Symptom evaluation',
-        'Follow-up visit', 'Preventive care', 'Treatment consultation'
+        'Follow-up visit', 'Preventive care', 'Treatment consultation',
+        'Chronic disease management', 'Medication review', 'Lab results discussion',
+        'Referral consultation', 'Emergency follow-up'
       ];
       
       const appointmentData = {
         doctorId: doctor.doctorProfile.id,
         patientId: patient.patientProfile.id,
-        date: faker.date.future({ years: 0.5 }),
+        date: appointmentDate,
         status: appointmentStatus,
         type: appointmentType,
         reason: faker.helpers.arrayElement(reasons),
         notes: faker.lorem.paragraph()
       };
 
-      // Add recording for completed video appointments (30% chance)
-              if (appointmentStatus === 'COMPLETED' && appointmentData.type === 'VIDEO' && faker.helpers.maybe(() => true, { probability: 0.3 })) {
+      // Add recording for completed video appointments (40% chance)
+      if (appointmentStatus === 'COMPLETED' && appointmentData.type === 'VIDEO' && faker.helpers.maybe(() => true, { probability: 0.4 })) {
         const recording = await prisma.file.create({
           data: generateFile(doctor.id, 'CONSULTATION_RECORDING')
         });
@@ -503,7 +552,7 @@ async function main() {
     console.log(`\n📊 Summary of created data:`);
     console.log(`👨‍⚕️  Doctors: ${doctors.length}`);
     console.log(`👥 Patients: ${patients.length}`);
-    console.log(`📅 Appointments: 35`);
+    console.log(`📅 Appointments: 100`);
     console.log(`⭐ Reviews: 25`);
     console.log(`📋 Medical Records: ${patients.length * 2} (average)`);
     console.log(`💬 Messages: 50`);

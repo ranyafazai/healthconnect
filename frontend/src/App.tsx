@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
 import type { RootState } from "./Redux/store";
 import { checkAuthStatus } from "./Redux/authSlice/authSlice";
@@ -12,7 +12,7 @@ import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { PERMISSIONS } from "./lib/permissions";
+
 
 // Component to handle authentication status checking
 function AuthRedirect() {
@@ -63,6 +63,8 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<LandingPage />} />
+        <Route path="/about" element={<LandingPage />} />
         <Route path="/search" element={<DoctorSearchPage />} />
         
         {/* Protected patient routes */}

@@ -39,8 +39,8 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
           {!isAuthenticated && (
             <>
               <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors">Home</a>
-              <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors">How It Works</a>
-              <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors">About</a>
+              <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors">How It Works</a>
+              <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors">About</a>
             </>
           )}
           {!isAuthenticated && (
@@ -103,8 +103,8 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
             {!isAuthenticated && (
               <>
                 <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors py-2">Home</a>
-                <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors py-2">How It Works</a>
-                <a href="#" className="text-gray-900 hover:text-gray-700 transition-colors py-2">About</a>
+                <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors py-2">How It Works</a>
+                <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors py-2">About</a>
               </>
             )}
             {!isAuthenticated && (
