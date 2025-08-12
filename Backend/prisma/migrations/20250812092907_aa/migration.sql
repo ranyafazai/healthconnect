@@ -118,6 +118,7 @@ CREATE TABLE `Review` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `doctorId` INTEGER NOT NULL,
     `patientId` INTEGER NOT NULL,
+    `appointmentId` INTEGER NULL,
     `rating` INTEGER NOT NULL,
     `comment` TEXT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -158,6 +159,31 @@ CREATE TABLE `Notification` (
     `isRead` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `UserSettings` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+    `emailNotifications` BOOLEAN NOT NULL DEFAULT true,
+    `smsNotifications` BOOLEAN NOT NULL DEFAULT false,
+    `pushNotifications` BOOLEAN NOT NULL DEFAULT true,
+    `appointmentReminders` BOOLEAN NOT NULL DEFAULT true,
+    `messageNotifications` BOOLEAN NOT NULL DEFAULT true,
+    `healthTips` BOOLEAN NOT NULL DEFAULT false,
+    `marketingEmails` BOOLEAN NOT NULL DEFAULT false,
+    `profileVisibility` ENUM('DOCTORS_ONLY', 'ALL_USERS', 'PRIVATE') NOT NULL DEFAULT 'DOCTORS_ONLY',
+    `shareMedicalHistory` BOOLEAN NOT NULL DEFAULT true,
+    `allowDataAnalytics` BOOLEAN NOT NULL DEFAULT false,
+    `shareForResearch` BOOLEAN NOT NULL DEFAULT false,
+    `twoFactorAuth` BOOLEAN NOT NULL DEFAULT false,
+    `sessionTimeout` INTEGER NOT NULL DEFAULT 30,
+    `loginNotifications` BOOLEAN NOT NULL DEFAULT true,
+
+    UNIQUE INDEX `UserSettings_userId_key`(`userId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -210,6 +236,9 @@ ALTER TABLE `Review` ADD CONSTRAINT `Review_doctorId_fkey` FOREIGN KEY (`doctorI
 ALTER TABLE `Review` ADD CONSTRAINT `Review_patientId_fkey` FOREIGN KEY (`patientId`) REFERENCES `PatientProfile`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `Review` ADD CONSTRAINT `Review_appointmentId_fkey` FOREIGN KEY (`appointmentId`) REFERENCES `Appointment`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `MedicalRecord` ADD CONSTRAINT `MedicalRecord_patientId_fkey` FOREIGN KEY (`patientId`) REFERENCES `PatientProfile`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -220,3 +249,6 @@ ALTER TABLE `File` ADD CONSTRAINT `File_ownerId_fkey` FOREIGN KEY (`ownerId`) RE
 
 -- AddForeignKey
 ALTER TABLE `Notification` ADD CONSTRAINT `Notification_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `UserSettings` ADD CONSTRAINT `UserSettings_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

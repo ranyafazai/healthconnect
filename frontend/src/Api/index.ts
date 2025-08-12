@@ -7,3 +7,4 @@ export * from './message.api';
 export * from './review.api';
 export * from './user.api';
 export * from './notification.api';
+export * from './userSettings.api';
