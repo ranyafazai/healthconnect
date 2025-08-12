@@ -57,6 +57,12 @@ enum NotificationType {
   SYSTEM
 }
 
+enum ProfileVisibility {
+  DOCTORS_ONLY
+  ALL_USERS
+  PRIVATE
+}
+
 // --------------------
 // MODELS
 // --------------------
@@ -76,36 +82,10 @@ model User {
   messagesReceived  Message[]        @relation("MessagesReceived")
   files             File[]
   userSettings      UserSettings?
+
 }
 
-model UserSettings {
-  id                    Int      @id @default(autoincrement())
-  userId                Int      @unique
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  
-  // Notification settings
-  emailNotifications    Boolean  @default(true)
-  smsNotifications     Boolean  @default(false)
-  pushNotifications    Boolean  @default(true)
-  appointmentReminders  Boolean  @default(true)
-  messageNotifications  Boolean  @default(true)
-  healthTips           Boolean  @default(false)
-  marketingEmails      Boolean  @default(false)
-  
-  // Privacy settings
-  profileVisibility    String   @default("DOCTORS_ONLY") // DOCTORS_ONLY, ALL_USERS, PRIVATE
-  shareMedicalHistory  Boolean  @default(true)
-  allowDataAnalytics   Boolean  @default(false)
-  shareForResearch     Boolean  @default(false)
-  
-  // Security settings
-  twoFactorAuth        Boolean  @default(false)
-  sessionTimeout       Int      @default(30) // minutes
-  loginNotifications   Boolean  @default(true)
-  
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+
 
 model DoctorProfile {
   id                Int                  @id @default(autoincrement())
@@ -265,4 +245,33 @@ model Notification {
   createdAt DateTime         @default(now())
 
   user      User             @relation(fields: [userId], references: [id])
+}
+
+model UserSettings {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Notification settings
+  emailNotifications    Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  pushNotifications     Boolean  @default(true)
+  appointmentReminders  Boolean  @default(true)
+  messageNotifications  Boolean  @default(true)
+  healthTips            Boolean  @default(false)
+  marketingEmails       Boolean  @default(false)
+  
+  // Privacy settings
+  profileVisibility     ProfileVisibility @default(DOCTORS_ONLY)
+  shareMedicalHistory   Boolean  @default(true)
+  allowDataAnalytics    Boolean  @default(false)
+  shareForResearch      Boolean  @default(false)
+  
+  // Security settings
+  twoFactorAuth         Boolean  @default(false)
+  sessionTimeout        Int      @default(30)
+  loginNotifications    Boolean  @default(true)
+
+  user                  User     @relation(fields: [userId], references: [id])
 }

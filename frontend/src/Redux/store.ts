@@ -10,6 +10,7 @@ import patientReducer from "./patientSlice/patientSlice";
 import reviewReducer from "./reviewSlice/reviewSlice";
 import notificationReducer from "./notificationSlice/notificationSlice";
 import userReducer from "./userSlice/userSlice";
+import userSettingsReducer from "./userSettingsSlice/userSettingsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +22,7 @@ export const store = configureStore({
     review: reviewReducer,
     notification: notificationReducer,
     user: userReducer,
+    userSettings: userSettingsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
