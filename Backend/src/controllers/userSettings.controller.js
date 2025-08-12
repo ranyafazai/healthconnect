@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { responseFormatter } from '../utils/responseFormatter.js';
+import responseFormatter from '../utils/responseFormatter.js';
 
 const prisma = new PrismaClient();
 
-export const getUserSettings = async (req, res) => {
+ const getUserSettings = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -22,17 +22,17 @@ export const getUserSettings = async (req, res) => {
     }
 
     return res.status(200).json(
-      responseFormatter.success('User settings retrieved successfully', userSettings)
+      responseFormatter.successResponse(userSettings, 'User settings retrieved successfully')
     );
   } catch (error) {
     console.error('Error getting user settings:', error);
     return res.status(500).json(
-      responseFormatter.error('Failed to retrieve user settings', error.message)
+      responseFormatter.errorResponse('Failed to retrieve user settings', 500, error.message)
     );
   }
 };
 
-export const updateUserSettings = async (req, res) => {
+ const updateUserSettings = async (req, res) => {
   try {
     const userId = req.user.id;
     const {
@@ -55,14 +55,14 @@ export const updateUserSettings = async (req, res) => {
     // Validate session timeout
     if (sessionTimeout && ![15, 30, 60, 120].includes(sessionTimeout)) {
       return res.status(400).json(
-        responseFormatter.error('Invalid session timeout value')
+        responseFormatter.validationErrorResponse('Invalid session timeout value')
       );
     }
 
     // Validate profile visibility
     if (profileVisibility && !['DOCTORS_ONLY', 'ALL_USERS', 'PRIVATE'].includes(profileVisibility)) {
       return res.status(400).json(
-        responseFormatter.error('Invalid profile visibility value')
+        responseFormatter.validationErrorResponse('Invalid profile visibility value')
       );
     }
 
@@ -98,12 +98,17 @@ export const updateUserSettings = async (req, res) => {
     });
 
     return res.status(200).json(
-      responseFormatter.success('User settings updated successfully', userSettings)
+      responseFormatter.updatedResponse(userSettings, 'User settings updated successfully')
     );
   } catch (error) {
     console.error('Error updating user settings:', error);
     return res.status(500).json(
-      responseFormatter.error('Failed to update user settings', error.message)
+      responseFormatter.errorResponse('Failed to update user settings', 500, error.message)
     );
   }
+};
+
+export default {
+  getUserSettings,
+  updateUserSettings
 };
