@@ -1,56 +1,74 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { Review } from '../../types/data/review';
-import * as reviewApi from '../../Api/review.api';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { reviewApi } from '../../Api';
+import type { Review, ReviewsStats } from '../../types/data/review';
 
-export interface ReviewState {
+interface ReviewState {
   reviews: Review[];
+  stats: ReviewsStats | null;
   loading: boolean;
   error: string | null;
-  selectedReview: Review | null;
 }
 
 const initialState: ReviewState = {
   reviews: [],
+  stats: null,
   loading: false,
-  error: null,
-  selectedReview: null,
+  error: null
 };
 
-// Async thunks
 export const fetchDoctorReviews = createAsyncThunk(
   'review/fetchDoctorReviews',
   async (doctorId: number) => {
-    const response = await reviewApi.getDoctorReviews(doctorId);
-    return response.data?.data || [];
+    const reviews = await reviewApi.getDoctorReviews(doctorId);
+    let stats: ReviewsStats | null = null;
+    try {
+      stats = await reviewApi.getDoctorReviewStats(doctorId);
+    } catch (_) {
+      // Fallback: compute minimal stats client-side if endpoint not available
+      const totalReviews = reviews.length;
+      const averageRating = totalReviews > 0
+        ? reviews.reduce((sum, r) => sum + (r as any).rating, 0) / totalReviews
+        : 0;
+      const ratingDistribution: { [key: number]: number } = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      reviews.forEach((r: any) => {
+        const rating = Math.max(1, Math.min(5, Number(r.rating) || 0));
+        ratingDistribution[rating] = (ratingDistribution[rating] || 0) + 1;
+      });
+      stats = {
+        totalReviews,
+        averageRating,
+        ratingDistribution,
+        analysis: {
+          topFeedback: {},
+          commonKeywords: [],
+          sentiment: 'neutral'
+        }
+      } as ReviewsStats;
+    }
+    return { reviews, stats };
   }
 );
 
 export const fetchPatientReviews = createAsyncThunk(
   'review/fetchPatientReviews',
   async (patientId: number) => {
-    const response = await reviewApi.getPatientReviews(patientId);
-    return response.data?.data || [];
+    const reviews = await reviewApi.getPatientReviews(patientId);
+    return reviews;
   }
 );
 
 export const createReview = createAsyncThunk(
   'review/createReview',
-  async (reviewData: {
-    doctorId: number;
-    rating: number;
-    comment: string;
-    appointmentId?: number;
-  }) => {
-    const response = await reviewApi.createReview(reviewData);
-    return response.data?.data;
-  }
-);
-
-export const updateReview = createAsyncThunk(
-  'review/updateReview',
-  async ({ id, data }: { id: number; data: Partial<Review> }) => {
-    const response = await reviewApi.updateReview(id, data);
-    return response.data?.data;
+  async (
+    reviewData: {
+      doctorId: number;
+      rating: number;
+      comment?: string;
+      appointmentId?: number;
+    }
+  ) => {
+    const created = await reviewApi.createReview(reviewData);
+    return created;
   }
 );
 
@@ -65,65 +83,58 @@ export const deleteReview = createAsyncThunk(
 const reviewSlice = createSlice({
   name: 'review',
   initialState,
-  reducers: {
-    setSelectedReview: (state, action: PayloadAction<Review | null>) => {
-      state.selectedReview = action.payload;
-    },
-    addReview: (state, action: PayloadAction<Review>) => {
-      state.reviews.unshift(action.payload);
-    },
-    updateReviewInState: (state, action: PayloadAction<Review>) => {
-      const index = state.reviews.findIndex(review => review.id === action.payload.id);
-      if (index !== -1) {
-        state.reviews[index] = action.payload;
-      }
-    },
-    removeReview: (state, action: PayloadAction<number>) => {
-      state.reviews = state.reviews.filter(review => review.id !== action.payload);
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch doctor reviews
       .addCase(fetchDoctorReviews.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchDoctorReviews.fulfilled, (state, action) => {
         state.loading = false;
-        state.reviews = action.payload;
+        state.reviews = action.payload.reviews;
+        state.stats = action.payload.stats;
       })
       .addCase(fetchDoctorReviews.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch reviews';
       })
+      // Patient reviews
+      .addCase(fetchPatientReviews.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPatientReviews.fulfilled, (state, action) => {
+        state.loading = false;
+        state.reviews = action.payload as Review[];
+        state.stats = null;
+      })
+      .addCase(fetchPatientReviews.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch patient reviews';
+      })
       // Create review
+      .addCase(createReview.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(createReview.fulfilled, (state, action) => {
+        state.loading = false;
         if (action.payload) {
-          state.reviews.unshift(action.payload);
+          state.reviews.unshift(action.payload as unknown as Review);
         }
       })
-      // Update review
-      .addCase(updateReview.fulfilled, (state, action) => {
-        if (action.payload) {
-          const index = state.reviews.findIndex(review => review.id === action.payload.id);
-          if (index !== -1) {
-            state.reviews[index] = action.payload;
-          }
-        }
+      .addCase(createReview.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to create review';
       })
       // Delete review
       .addCase(deleteReview.fulfilled, (state, action) => {
-        state.reviews = state.reviews.filter(review => review.id !== action.payload);
+        const idToRemove = action.payload as unknown as number;
+        // @ts-ignore - ids may be string/number depending on backend; coerce to string for compare
+        state.reviews = state.reviews.filter(r => String(r.id) !== String(idToRemove));
       });
   },
 });
-
-export const {
-  setSelectedReview,
-  addReview,
-  updateReviewInState,
-  removeReview,
-} = reviewSlice.actions;
 
 export default reviewSlice.reducer;

@@ -2,14 +2,30 @@ import type { DoctorProfile } from './doctor';
 import type { PatientProfile } from './patient';
 
 export interface Review {
-  id: number;
-  doctorId: number;
-  patientId: number;
-  appointmentId?: number;
+  id: string;
   rating: number;
-  comment?: string;
+  comment: string;
+  patientId: string;
+  doctorId: string;
+  appointmentId?: string;
   createdAt: Date;
-  
-  doctor?: DoctorProfile;
+  updatedAt: Date;
   patient?: PatientProfile;
+}
+
+export interface ReviewAnalysis {
+  topFeedback: {
+    [key: string]: string[];
+  };
+  commonKeywords: string[];
+  sentiment: string;
+}
+
+export interface ReviewsStats {
+  totalReviews: number;
+  averageRating: number;
+  ratingDistribution: {
+    [key: number]: number;
+  };
+  analysis: ReviewAnalysis;
 }
