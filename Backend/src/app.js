@@ -16,6 +16,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import medicalRecordRoutes from "./routes/medicalRecord.routes.js";
 import fileRoutes from "./routes/file.routes.js";
 import videoCallRoutes from "./routes/videoCall.routes.js";
+import userSettingsRoutes from "./routes/userSettings.routes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import logger from "./config/logger.js";
 
@@ -113,6 +114,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/video-calls", videoCallRoutes);
+app.use("/api/user-settings", userSettingsRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -141,6 +143,7 @@ app.get("/api", (req, res) => {
       medicalRecords: "/api/medical-records",
       files: "/api/files",
       videoCalls: "/api/video-calls",
+      userSettings: "/api/user-settings",
       webrtc: "/api/webrtc-config",
       socketStatus: "/api/socket-status"
     }
