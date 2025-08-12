@@ -36,22 +36,26 @@ const Messages: React.FC = () => {
   // Connect to chat when component mounts
   useEffect(() => {
     if (user?.id) {
-      console.log('🔌 Connecting to chat for user:', user.id);
+      console.log('🔌 Doctor connecting to chat for user:', user.id);
+      console.log('🔌 Doctor user details:', user);
       dispatch(connectChat(user.id));
+    } else {
+      console.log('❌ Doctor user not found:', user);
     }
 
     // Cleanup: disconnect from chat when component unmounts
     return () => {
-      console.log('🔌 Disconnecting from chat');
-      dispatch(disconnectChat());
+      console.log('🔌 Doctor disconnecting from chat');
+      dispatch(disconnectChat(user?.id || 0));
     };
   }, [dispatch, user?.id]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    console.log('📱 Messages updated, count:', messages.length);
+    console.log('📱 Doctor messages updated, count:', messages.length);
+    console.log('📱 Doctor current messages:', messages);
     if (messages.length > 0) {
-      console.log('📱 Auto-scrolling to bottom');
+      console.log('📱 Doctor auto-scrolling to bottom');
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
@@ -73,7 +77,7 @@ const Messages: React.FC = () => {
       console.log('📅 Set current appointment ID:', conversation.appointmentId);
       
       // Join appointment room for real-time messaging
-      joinAppointmentRoom(conversation.appointmentId);
+      joinAppointmentRoom(conversation.appointmentId, user?.id || 0);
       
       // Fetch messages for this appointment
       dispatch(fetchAppointmentMessages(conversation.appointmentId));
@@ -259,6 +263,10 @@ const Messages: React.FC = () => {
                     {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' 
                       ? 'Appointment Conversation' 
                       : 'Doctor Conversation'}
+                  </p>
+                  {/* Debug: Message counter */}
+                  <p className="text-xs text-blue-600 mt-1">
+                    Messages: {messages.length} | Connected: {user?.id ? 'Yes' : 'No'}
                   </p>
                 </div>
                 

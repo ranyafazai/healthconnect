@@ -36,20 +36,24 @@ const Messages: React.FC = () => {
   // Connect to chat when component mounts
   useEffect(() => {
     if (user?.id) {
-      console.log('🔌 Connecting to chat for user:', user.id);
+      console.log('🔌 Patient connecting to chat for user:', user.id);
+      console.log('🔌 Patient user details:', user);
       dispatch(connectChat(user.id));
+    } else {
+      console.log('❌ Patient user not found:', user);
     }
 
     // Cleanup: disconnect from chat when component unmounts
     return () => {
-      console.log('🔌 Disconnecting from chat');
-      dispatch(disconnectChat());
+      console.log('🔌 Patient disconnecting from chat');
+      dispatch(disconnectChat(user?.id || 0));
     };
   }, [dispatch, user?.id]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     console.log('📱 Patient messages updated, count:', messages.length);
+    console.log('📱 Patient current messages:', messages);
     if (messages.length > 0) {
       console.log('📱 Patient auto-scrolling to bottom');
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,7 +77,7 @@ const Messages: React.FC = () => {
       console.log('📅 Set current appointment ID:', conversation.appointmentId);
       
       // Join appointment room for real-time messaging
-      joinAppointmentRoom(conversation.appointmentId);
+      joinAppointmentRoom(conversation.appointmentId, user?.id || 0);
       
       // Fetch messages for this appointment
       dispatch(fetchAppointmentMessages(conversation.appointmentId));
@@ -259,6 +263,10 @@ const Messages: React.FC = () => {
                     {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' 
                       ? 'Appointment Conversation' 
                       : 'Doctor Conversation'}
+                  </p>
+                  {/* Debug: Message counter */}
+                  <p className="text-xs text-blue-600 mt-1">
+                    Messages: {messages.length} | Connected: {user?.id ? 'Yes' : 'No'}
                   </p>
                 </div>
                 
