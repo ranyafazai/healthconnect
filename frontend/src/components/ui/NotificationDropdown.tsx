@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { fetchNotifications, markAsRead, markAllAsRead as markAllAsReadAction } from '../../Redux/notificationSlice/notificationSlice';
@@ -37,26 +37,18 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
     socketRef.current.emit('join-user', user.id);
 
     // Listen for new notifications
-    socketRef.current.on('new-notification', (notification: Notification) => {
-      console.log('New notification received:', notification);
-      // Refresh notifications list
+    socketRef.current.on('new-notification', (_notification: Notification) => {
       dispatch(fetchNotifications());
     });
 
-    // Listen for notification read confirmation
-    socketRef.current.on('notification-read', (data: { notificationId: number }) => {
-      console.log('Notification marked as read:', data.notificationId);
-    });
+    // Listen for notification read confirmation (no-op)
+    socketRef.current.on('notification-read', (_data: { notificationId: number }) => {});
 
-    // Listen for connection confirmation
-    socketRef.current.on('joined', (data: { userId: number, role: string }) => {
-      console.log('Joined notification room:', data);
-    });
+    // Listen for connection confirmation (no-op)
+    socketRef.current.on('joined', (_data: { userId: number, role: string }) => {});
 
-    // Listen for errors
-    socketRef.current.on('error', (error: { message: string }) => {
-      console.error('Notification socket error:', error);
-    });
+    // Listen for errors (no-op)
+    socketRef.current.on('error', (_error: { message: string }) => {});
 
     // Fetch initial notifications
     dispatch(fetchNotifications());
@@ -118,11 +110,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
   };
 
   const markAllAsRead = async () => {
-    try {
-      await dispatch(markAllAsReadAction()).unwrap();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-    }
+    await dispatch(markAllAsReadAction()).unwrap();
   };
 
   const getNotificationIcon = (type: NotificationType) => {

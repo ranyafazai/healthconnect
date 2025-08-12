@@ -19,10 +19,7 @@ export function getSocket(namespace: '/chat' | '/video-call' | '/notifications' 
   const socket = io(url, {
     transports: ['websocket'],
     withCredentials: true,
-    auth: () => {
-      const token = localStorage.getItem('token');
-      return token ? { token } : {};
-    },
+    // Auth via httpOnly cookie; no localStorage token
     autoConnect: true,
     reconnection: true,
     reconnectionAttempts: 10,

@@ -1,18 +1,18 @@
-import React from 'react';
+import type { ReactNode, FC } from 'react';
 import { useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { hasPermission, canAccessResource } from '../../lib/permissions';
 
 interface PermissionGuardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   permission: string;
   resource?: string;
   resourceId?: number | string;
-  fallback?: React.ReactNode;
+  fallback?: ReactNode;
   showFallback?: boolean;
 }
 
-const PermissionGuard: React.FC<PermissionGuardProps> = ({
+const PermissionGuard: FC<PermissionGuardProps> = ({
   children,
   permission,
   resource,

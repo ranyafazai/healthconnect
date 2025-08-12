@@ -1,4 +1,4 @@
-import React from "react";
+// No React import needed
 import { Star } from "lucide-react";
 import type { DoctorProfile } from '../../../types/data/doctor';
 

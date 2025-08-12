@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { connectChat, disconnectChat, fetchConversation, sendTextMessage, fetchAppointmentMessages, clearMessages, joinAppointmentRoom } from '../../Redux/chatSlice/chatSlice';
@@ -36,11 +36,9 @@ const Messages: React.FC = () => {
   // Connect to chat when component mounts
   useEffect(() => {
     if (user?.id) {
-      console.log('🔌 Patient connecting to chat for user:', user.id);
-      console.log('🔌 Patient user details:', user);
       dispatch(connectChat(user.id));
     } else {
-      console.log('❌ Patient user not found:', user);
+      // no user found; skip
     }
 
     // Cleanup: disconnect from chat when component unmounts
@@ -52,16 +50,12 @@ const Messages: React.FC = () => {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    console.log('📱 Patient messages updated, count:', messages.length);
-    console.log('📱 Patient current messages:', messages);
     if (messages.length > 0) {
-      console.log('📱 Patient auto-scrolling to bottom');
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
   const handleSelectConversation = (conversationId: number) => {
-    console.log('💬 Patient selected conversation:', conversationId);
     setSelectedId(conversationId);
     markConversationAsRead(conversationId);
     
@@ -70,11 +64,9 @@ const Messages: React.FC = () => {
     
     // Find the conversation to get appointment details
     const conversation = conversations.find(conv => conv.id === conversationId);
-    console.log('🔍 Found conversation:', conversation);
     
     if (conversation?.appointmentId) {
       setCurrentAppointmentId(conversation.appointmentId);
-      console.log('📅 Set current appointment ID:', conversation.appointmentId);
       
       // Join appointment room for real-time messaging
       joinAppointmentRoom(conversation.appointmentId, user?.id || 0);
@@ -88,22 +80,18 @@ const Messages: React.FC = () => {
   };
 
   const handleVideoCall = () => {
-    console.log('🎥 Patient video call button clicked');
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
-      console.log('✅ Starting video call for patient');
       setIsVideoCallOpen(true);
     } else {
-      console.log('❌ Cannot start video call - conditions not met');
+      // cannot start
     }
   };
 
   const handleAudioCall = () => {
-    console.log('📞 Patient audio call button clicked');
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
-      console.log('✅ Starting audio call for patient');
       setIsAudioCallOpen(true);
     } else {
-      console.log('❌ Cannot start audio call - conditions not met');
+      // cannot start
     }
   };
 
@@ -276,7 +264,6 @@ const Messages: React.FC = () => {
                       {(() => {
                         const conversation = conversations.find(conv => conv.id === selectedId);
                         const canCall = conversation && canStartVideoCall(conversation);
-                        console.log('🎥 Rendering call buttons for conversation:', conversation?.id, 'Can call:', canCall);
                         return (
                           <>
                             <button
@@ -321,16 +308,7 @@ const Messages: React.FC = () => {
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200">
               <MessageInput 
-                onSend={(content) => {
-                  // Handle sending message
-                  console.log('💬 Patient sending message:', content);
-                  console.log('📝 Message details:', {
-                    conversationId: selectedId,
-                    appointmentId: currentAppointmentId,
-                    content,
-                    timestamp: new Date().toISOString()
-                  });
-                  
+                 onSend={(content) => {
                   if (selectedId && currentAppointmentId) {
                     const conversation = conversations.find(conv => conv.id === selectedId);
                     if (conversation) {

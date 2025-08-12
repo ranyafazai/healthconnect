@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchPatientReviews, deleteReview } from '../../Redux/reviewSlice/reviewSlice';
 import { Star, Edit, Trash2, Plus } from 'lucide-react';
@@ -21,12 +21,7 @@ const Reviews: React.FC = () => {
 
   const handleDeleteReview = async (reviewId: number) => {
     if (window.confirm('Are you sure you want to delete this review?')) {
-      try {
-        await dispatch(deleteReview(reviewId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete review:', error);
-        alert('Failed to delete review. Please try again.');
-      }
+      await dispatch(deleteReview(reviewId)).unwrap();
     }
   };
 

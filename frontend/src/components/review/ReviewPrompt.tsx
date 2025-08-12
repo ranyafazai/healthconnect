@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// No React default import required
+import { useState } from 'react';
 import { Star, MessageSquare } from 'lucide-react';
 import ReviewForm from './ReviewForm';
 

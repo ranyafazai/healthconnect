@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 import { useNavigate } from "react-router-dom";
 import {
@@ -22,26 +22,9 @@ export default function Dashboard() {
   
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { appointments, loading: appointmentsLoading } = useAppSelector((state: RootState) => state.appointment);
-  const { notifications } = useAppSelector((state: RootState) => state.notification);
   const { messages, loadingMessages: messagesLoading } = useAppSelector((state: RootState) => state.chat);
 
-  // Debug logging for initial render
-  console.log('Dashboard initial render - user:', user);
-  console.log('Dashboard initial render - appointments:', appointments);
-  console.log('Dashboard initial render - messages:', messages);
-
-  // Component lifecycle debugging
-  useEffect(() => {
-    console.log('Dashboard mounted');
-    return () => {
-      console.log('Dashboard unmounted');
-    };
-  }, []);
-
-  // Debug logging
-  console.log('Dashboard render - appointments:', appointments);
-  console.log('Dashboard render - appointments type:', typeof appointments);
-  console.log('Dashboard render - appointmentsLoading:', appointmentsLoading);
+  // Debug logs removed
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -53,25 +36,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
-      console.log('Dashboard useEffect - dispatching fetchAppointmentsByPatient for patient profile:', user.patientProfile.id);
       dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
       dispatch(fetchNotifications());
     }
   }, [dispatch, user?.patientProfile?.id]);
 
-  // Debug useEffect to monitor state changes
-  useEffect(() => {
-    console.log('Dashboard state change - appointments:', appointments);
-    console.log('Dashboard state change - appointmentsLoading:', appointmentsLoading);
-    console.log('Dashboard state change - messages:', messages);
-    console.log('Dashboard state change - messagesLoading:', messagesLoading);
-  }, [appointments, appointmentsLoading, messages, messagesLoading]);
+  // State change tracing removed
 
   // Refresh appointments when user navigates to dashboard
   useEffect(() => {
     const handleFocus = () => {
       if (user?.patientProfile?.id) {
-        console.log('Dashboard focus - refreshing appointments for patient profile:', user.patientProfile.id);
         dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
       }
     };

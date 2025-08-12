@@ -9,30 +9,12 @@ interface LocalAuthState {
   error: string | null;
 }
 
-// Load initial state from localStorage
-const loadState = (): LocalAuthState => {
-  try {
-    const serializedState = localStorage.getItem('authState');
-    if (serializedState === null) {
-      return {
-        isAuthenticated: false,
-        user: null,
-        loading: false,
-        error: null,
-      };
-    }
-    return JSON.parse(serializedState);
-  } catch (err) {
-    return {
-      isAuthenticated: false,
-      user: null,
-      loading: false,
-      error: null,
-    };
-  }
+const initialState: LocalAuthState = {
+  isAuthenticated: false,
+  user: null,
+  loading: false,
+  error: null,
 };
-
-const initialState: LocalAuthState = loadState();
 
 const authSlice = createSlice({
   name: "auth",
@@ -47,8 +29,6 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.user = null;
       state.error = null;
-      // Clear localStorage when logging out
-      localStorage.removeItem('authState');
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
@@ -74,8 +54,6 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.error = action.payload as string;
-        // Clear localStorage if authentication check fails
-        localStorage.removeItem('authState');
       });
   },
 });
@@ -92,20 +70,6 @@ export const checkAuthStatus = createAsyncThunk(
     }
   }
 );
-
-// Save state to localStorage whenever it changes
-export const saveStateToStorage = (state: LocalAuthState) => {
-  try {
-    const stateWithTimestamp = {
-      ...state,
-      timestamp: Date.now()
-    };
-    const serializedState = JSON.stringify(stateWithTimestamp);
-    localStorage.setItem('authState', serializedState);
-  } catch (err) {
-    // Ignore write errors
-  }
-};
 
 export const { setAuth, clearAuth, setLoading, setError } = authSlice.actions;
 export default authSlice.reducer;

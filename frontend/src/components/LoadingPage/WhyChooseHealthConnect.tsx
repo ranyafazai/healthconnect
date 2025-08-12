@@ -1,4 +1,4 @@
-import React from "react";
+// No React import needed
 import { Calendar, Video, ShieldCheck, Clock, Tag, FileText } from "lucide-react";
 
 export function WhyChooseHealthConnect() {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchDoctors, getDoctorById } from '../../Redux/doctorSlice/doctorSlice';
@@ -7,7 +7,7 @@ import DateTime from './Booking/DateTime';
 import ConsultationTypeStep from './Booking/ConsultationTypeStep';
 import PatientInfo from './Booking/PatientInfo';
 import { Confirmation } from './Booking/Confirmation';
-import type { DoctorProfile } from '../../types/data/doctor';
+// Removed unused import of DoctorProfile
 import type { RootState } from '../../Redux/store';
 
 interface BookingData {
@@ -96,7 +96,8 @@ function App() {
     setBookingData({ ...bookingData, ...data });
   }, [bookingData]);
 
-  const canProceedToNextStep = () => {
+  // Helper reserved for future validation of steps
+  // const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1: // DateTime
         return bookingData.date && bookingData.time;
@@ -113,7 +114,7 @@ function App() {
       default:
         return true;
     }
-  };
+  // };
 
   const renderCurrentStep = () => {
     const doctor = doctors.find(d => d.id === parseInt(doctorId || '0'));

@@ -35,8 +35,7 @@ export function useConversations() {
         const now = new Date();
         const newConversations: Conversation[] = [];
 
-        console.log('🔍 Generating conversations from appointments:', appointments.length);
-        console.log('👤 Current user role:', user?.role);
+        // generating conversations from appointments
 
         if (user?.role === 'DOCTOR') {
           // Generate conversations from appointments
@@ -75,7 +74,6 @@ export function useConversations() {
               appointmentType: appointment.type
             };
             
-            console.log('📅 Created doctor conversation:', conversation);
             newConversations.push(conversation);
           });
 
@@ -101,7 +99,7 @@ export function useConversations() {
               status: 'PAST',
               lastMessageTime: new Date(Date.now() - 86400000).toISOString()
             }
-          ];
+             ];
           newConversations.push(...doctorConversations);
 
         } else if (user?.role === 'PATIENT') {
@@ -141,7 +139,6 @@ export function useConversations() {
               appointmentType: appointment.type
             };
             
-            console.log('📅 Created patient conversation:', conversation);
             newConversations.push(conversation);
           });
         }
@@ -152,10 +149,9 @@ export function useConversations() {
           return statusOrder[a.status] - statusOrder[b.status];
         });
 
-        console.log('✅ Final conversations:', newConversations);
         setConversations(newConversations);
       } catch (err) {
-        console.error('Failed to generate conversations:', err);
+        // failed to generate conversations
         setError('Failed to load conversations');
       } finally {
         setLoading(false);
@@ -203,10 +199,7 @@ export function useConversations() {
   };
 
   const canStartVideoCall = (conversation: Conversation) => {
-    console.log('🎥 canStartVideoCall called for conversation:', conversation);
-    
     if (conversation.type !== 'APPOINTMENT' || !conversation.appointmentDate) {
-      console.log('❌ Cannot start video call: Not an appointment or missing date');
       return false;
     }
     
@@ -220,9 +213,7 @@ export function useConversations() {
     // return minutesDiff <= 35 && conversation.appointmentType === 'VIDEO';
     
     // For testing: Allow all video calls regardless of time
-    const canCall = conversation.appointmentType === 'VIDEO';
-    console.log('🎥 Video call allowed:', canCall, 'for appointment type:', conversation.appointmentType);
-    return canCall;
+    return conversation.appointmentType === 'VIDEO';
   };
 
   return {

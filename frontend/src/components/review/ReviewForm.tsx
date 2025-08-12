@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// No React default import required
+import { useState } from 'react';
 import { useAppDispatch } from '../../Redux/hooks';
 import  {createReview}  from '../../Redux/reviewSlice/reviewSlice';
 import { Star } from 'lucide-react';

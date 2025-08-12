@@ -70,32 +70,7 @@ export const groupBy = <T, K extends string | number>(
   }, {} as Record<K, T[]>);
 };
 
-// Storage utilities
-export const setLocalStorage = (key: string, value: any): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error('Error saving to localStorage:', error);
-  }
-};
-
-export const getLocalStorage = <T>(key: string, defaultValue?: T): T | null => {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue || null;
-  } catch (error) {
-    console.error('Error reading from localStorage:', error);
-    return defaultValue || null;
-  }
-};
-
-export const removeLocalStorage = (key: string): void => {
-  try {
-    localStorage.removeItem(key);
-  } catch (error) {
-    console.error('Error removing from localStorage:', error);
-  }
-};
+// (storage helpers removed; app now relies on cookies + Redux)
 
 // Debounce utility
 export const debounce = <T extends (...args: any[]) => any>(

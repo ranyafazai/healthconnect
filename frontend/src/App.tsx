@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
 import type { RootState } from "./Redux/store";
 import { checkAuthStatus } from "./Redux/authSlice/authSlice";
@@ -20,29 +20,8 @@ function AuthRedirect() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    // Clear any stale authentication state on app startup
-    const clearStaleAuth = () => {
-      const authState = localStorage.getItem('authState');
-      if (authState) {
-        try {
-          const parsed = JSON.parse(authState);
-          // If the stored state is older than 24 hours, clear it
-          if (parsed.timestamp && Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem('authState');
-            return;
-          }
-        } catch (error) {
-          localStorage.removeItem('authState');
-        }
-      }
-    };
-
-    clearStaleAuth();
-    
-    // Check authentication status only once when component mounts
-    // and only if we don't have authentication data
-    const token = localStorage.getItem('token');
-    if (!isAuthenticated && !loading && token) {
+    // On app mount, rely on httpOnly cookie and ask backend for user
+    if (!isAuthenticated && !loading) {
       dispatch(checkAuthStatus());
     }
   }, []); // Empty dependency array to run only once

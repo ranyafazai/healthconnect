@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Filter, Search, Eye, Edit, Trash2, RefreshCw, TrendingUp, AlertCircle, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
 import type { RootState } from '../../Redux/store';

@@ -1,5 +1,5 @@
 // frontend/src/components/Auth/AuthForm.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -88,9 +88,7 @@ export default function AuthForm({ type }: AuthFormProps) {
         response = await login({ email: formData.email, password: formData.password });
       }
 
-      // Extract user data from response
       const userData = response.data.user;
-      console.log('Authentication successful, user data:', userData);
       
       // Store basic user data in Redux first
       const user: UserLite = {
@@ -99,26 +97,16 @@ export default function AuthForm({ type }: AuthFormProps) {
         role: userData.role
       };
       
-      console.log('Dispatching basic auth to Redux:', user);
       dispatch(setAuth(user));
       
-      // Fetch full user data including profiles
-      console.log('Fetching full user data with profiles...');
       await dispatch(checkAuthStatus()).unwrap();
       
       // Redirect based on user role
       if (user.role === 'DOCTOR') {
-        console.log('Redirecting to doctor dashboard');
         navigate('/doctor/dashboard');
       } else {
-        console.log('Redirecting to patient dashboard');
         navigate('/patient/dashboard');
       }
-      
-      // Add a small delay to ensure Redux state is updated
-      setTimeout(() => {
-        console.log('Current auth state after login:', { isAuthenticated: true, user });
-      }, 100);
       
     } catch (err: any) {
       // Handle API error shape from backend controllers

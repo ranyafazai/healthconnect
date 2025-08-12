@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// No React default import required
+import { useState } from 'react';
 import FullLine from './FullLine';
 import DoctorCard from './DoctorCard';
 import { BookingSummary } from './BookingSummary';

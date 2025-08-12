@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { ChevronLeft, ChevronRight, Calendar, Clock, User } from 'lucide-react';
 import type { RootState } from '../../Redux/store';
 import { fetchAppointmentsByPatient, updateAppointmentStatus, deleteAppointment, setPage } from '../../Redux/appointmentSlice/appointmentSlice';
-import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
+import type { AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -11,7 +12,8 @@ const Appointments: React.FC = () => {
   const { appointments, loading, page, limit, total } = useAppSelector((state: RootState) => state.appointment);
   
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  // Remove unused state to satisfy linter
+  // const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
@@ -35,12 +37,8 @@ const Appointments: React.FC = () => {
            aptDate.getFullYear() === currentDate.getFullYear();
   });
 
-  // Get today's appointments
-  const todayAppointments = appointments.filter(apt => {
-    const aptDate = new Date(apt.date);
-    const today = new Date();
-    return aptDate.toDateString() === today.toDateString();
-  });
+  // Compute today's appointments when needed in the future
+  // const todayAppointments = appointments.filter(apt => new Date(apt.date).toDateString() === new Date().toDateString());
 
   const renderCalendarDays = () => {
     const year = currentDate.getFullYear();

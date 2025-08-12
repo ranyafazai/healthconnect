@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../../../Redux/hooks";
 import { createAppointment, fetchAppointmentsByPatient } from "../../../Redux/appointmentSlice/appointmentSlice";
@@ -46,15 +46,11 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     apt.type === bookingData.consultationType
   );
 
-  console.log('Confirmation component render - props:', { bookingData, doctor, user });
-  console.log('Confirmation component state:', { isCreating, appointmentId, hasAttemptedCreation, isNavigating });
-  console.log('Session storage check:', { sessionKey, hasCreatedInSession });
-  console.log('Redux store check:', { appointmentsCount: appointments.length, createdAppointment });
+  // Debug logs removed
 
   // Monitor if appointment was created in Redux store
   useEffect(() => {
     if (createdAppointment && !appointmentId && isCreating) {
-      console.log('Appointment found in Redux store, updating local state');
       setAppointmentId(createdAppointment.id);
       setIsCreating(false);
     }
@@ -63,19 +59,15 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
   // Fallback: If we have an appointment ID but still in creating state, force update
   useEffect(() => {
     if (appointmentId && isCreating) {
-      console.log('Appointment ID exists but still in creating state, forcing update');
       setIsCreating(false);
     }
   }, [appointmentId, isCreating]);
 
   // Cleanup on unmount
   useEffect(() => {
-    console.log('Confirmation component mounted');
-    
     // Set a timeout to prevent infinite loading (10 seconds)
     const timeout = setTimeout(() => {
       if (isMountedRef.current && isCreating && !appointmentId) {
-        console.log('Creation timeout reached, forcing loading state to false');
         setIsCreating(false);
         setError('Appointment creation is taking longer than expected. Please check your dashboard or try again.');
       }
@@ -84,7 +76,6 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     setCreationTimeout(timeout);
     
     return () => {
-      console.log('Confirmation component unmounting');
       isMountedRef.current = false;
       
       // Clear timeout
@@ -95,7 +86,6 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       // Clean up session storage only if we're navigating away successfully
       // Keep it if there was an error so user can retry
       if (appointmentId && !error) {
-        console.log('Cleaning up session storage for successful appointment creation');
         sessionStorage.removeItem(sessionKey);
       }
     };
@@ -103,59 +93,25 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
 
   // Auto-create appointment when component mounts (only once)
   useEffect(() => {
-    console.log('Confirmation useEffect triggered with dependencies:', { 
-      bookingData: !!bookingData, 
-      doctor: !!doctor, 
-      user: !!user, 
-      hasAttemptedCreation, 
-      isCreating, 
-      isMounted: isMountedRef.current,
-      hasCreatedInSession: !!hasCreatedInSession
-    });
-    
     if (bookingData && doctor && user && !hasAttemptedCreation && !isCreating && isMountedRef.current && !hasCreatedInSession) {
-      console.log('Creating appointment - all conditions met');
       setHasAttemptedCreation(true);
       createAppointmentInBackend();
     } else {
-      console.log('Skipping appointment creation - conditions not met:', {
-        hasBookingData: !!bookingData,
-        hasDoctor: !!doctor,
-        hasUser: !!user,
-        hasAttemptedCreation,
-        isCreating,
-        isMounted: isMountedRef.current,
-        hasCreatedInSession: !!hasCreatedInSession
-      });
+      // conditions not met; skip
     }
   }, [bookingData, doctor, user, hasAttemptedCreation, isCreating, hasCreatedInSession]);
 
   const createAppointmentInBackend = async () => {
-    console.log('createAppointmentInBackend called with state:', { 
-      userId: user?.id, 
-      doctorId: doctor?.id, 
-      hasDate: !!bookingData.date, 
-      hasTime: !!bookingData.time, 
-      hasType: !!bookingData.consultationType, 
-      hasPatientInfo: !!bookingData.patientInfo,
-      isCreating,
-      appointmentId,
-      isMounted: isMountedRef.current
-    });
-
     if (!user?.id || !doctor?.id || !bookingData.date || !bookingData.time || !bookingData.consultationType || !bookingData.patientInfo) {
-      console.log('Missing required booking information');
       setError('Missing required booking information');
       return;
     }
 
     // Prevent duplicate creation attempts
     if (isCreating || appointmentId) {
-      console.log('Appointment creation already in progress or completed');
       return;
     }
 
-    console.log('Starting appointment creation process');
     setIsCreating(true);
     setError(null);
 
@@ -171,40 +127,26 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
         notes: undefined
       };
 
-      console.log('Creating appointment with data:', appointmentData);
-
       // Use Redux action instead of direct API call
       const result = await dispatch(createAppointment(appointmentData)).unwrap();
-      console.log('Appointment creation result:', result);
-      console.log('Result structure:', {
-        hasResult: !!result,
-        hasData: !!result?.data,
-        hasDataData: !!result?.data?.data,
-        appointmentId: result?.data?.data?.id
-      });
       
       if (isMountedRef.current) {
         // Fix: Redux action returns response.data which is { data: { data: Appointment } }
         // So we access result.data.data.id
         const appointmentIdFromResult = result.data.data.id;
-        console.log('Setting appointment ID to:', appointmentIdFromResult);
         setAppointmentId(appointmentIdFromResult);
-        console.log('Appointment ID set to:', appointmentIdFromResult);
         
         // Mark this appointment as created in session storage to prevent duplicates
         sessionStorage.setItem(sessionKey, 'true');
-        console.log('Appointment marked as created in session storage');
         
         // Refresh the patient's appointments to show the new appointment
         if (user?.patientProfile?.id) {
-          console.log('Refreshing patient appointments for profile:', user.patientProfile.id);
           dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
         }
         
         // Redirect to dashboard after successful creation
         setTimeout(() => {
           if (isMountedRef.current && !isNavigating) {
-            console.log('Redirecting to dashboard');
             setIsNavigating(true);
             navigate('/patient/dashboard');
           }
@@ -212,7 +154,6 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       }
       
     } catch (error: unknown) {
-      console.error('Error creating appointment:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create appointment. Please try again.';
       setError(errorMessage);
       // Reset the flag on error so user can retry
@@ -221,9 +162,7 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       }
     } finally {
       // Always set isCreating to false, regardless of mount status
-      console.log('Setting isCreating to false');
       setIsCreating(false);
-      console.log('Appointment creation process completed');
     }
   };
 
@@ -246,7 +185,6 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     // Check if we actually have an appointment ID or if it was created in session storage
     // This handles the case where the appointment was created but the state didn't update properly
     if (appointmentId || hasCreatedInSession) {
-      console.log('Appointment was created but component still in loading state, forcing state update');
       // Force the component to show success state by updating state
       setTimeout(() => {
         if (isMountedRef.current) {

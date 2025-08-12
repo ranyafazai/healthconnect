@@ -1,4 +1,4 @@
-import React from 'react';
+// No React default import required
 import type { DoctorProfile } from '../../../types/data/doctor';
 
 interface BookingSummaryProps {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useEffect, useState } from 'react';
 import DoctorCard from './DoctorCard';
 import FullLine from './FullLine';
 import { BookingSummary } from './BookingSummary';
@@ -102,7 +103,7 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
   };
 
   // Update booking data immediately when date or time changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedDate && selectedTime) {
       updateBookingData({ date: selectedDate, time: selectedTime });
     }

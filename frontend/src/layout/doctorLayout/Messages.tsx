@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { connectChat, disconnectChat, fetchConversation, sendTextMessage, fetchAppointmentMessages, clearMessages, joinAppointmentRoom } from '../../Redux/chatSlice/chatSlice';
@@ -36,32 +36,25 @@ const Messages: React.FC = () => {
   // Connect to chat when component mounts
   useEffect(() => {
     if (user?.id) {
-      console.log('🔌 Doctor connecting to chat for user:', user.id);
-      console.log('🔌 Doctor user details:', user);
       dispatch(connectChat(user.id));
     } else {
-      console.log('❌ Doctor user not found:', user);
+      // no user found; skip
     }
 
     // Cleanup: disconnect from chat when component unmounts
     return () => {
-      console.log('🔌 Doctor disconnecting from chat');
       dispatch(disconnectChat(user?.id || 0));
     };
   }, [dispatch, user?.id]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    console.log('📱 Doctor messages updated, count:', messages.length);
-    console.log('📱 Doctor current messages:', messages);
     if (messages.length > 0) {
-      console.log('📱 Doctor auto-scrolling to bottom');
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
   const handleSelectConversation = (conversationId: number) => {
-    console.log('💬 Doctor selected conversation:', conversationId);
     setSelectedId(conversationId);
     markConversationAsRead(conversationId);
     
@@ -70,11 +63,9 @@ const Messages: React.FC = () => {
     
     // Find the conversation to get appointment details
     const conversation = conversations.find(conv => conv.id === conversationId);
-    console.log('🔍 Found conversation:', conversation);
     
     if (conversation?.appointmentId) {
       setCurrentAppointmentId(conversation.appointmentId);
-      console.log('📅 Set current appointment ID:', conversation.appointmentId);
       
       // Join appointment room for real-time messaging
       joinAppointmentRoom(conversation.appointmentId, user?.id || 0);
@@ -88,22 +79,18 @@ const Messages: React.FC = () => {
   };
 
   const handleVideoCall = () => {
-    console.log('🎥 Doctor video call button clicked');
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
-      console.log('✅ Starting video call for doctor');
       setIsVideoCallOpen(true);
     } else {
-      console.log('❌ Cannot start video call - conditions not met');
+      // cannot start
     }
   };
 
   const handleAudioCall = () => {
-    console.log('📞 Doctor audio call button clicked');
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
-      console.log('✅ Starting audio call for doctor');
       setIsAudioCallOpen(true);
     } else {
-      console.log('❌ Cannot start audio call - conditions not met');
+      // cannot start
     }
   };
 
@@ -276,7 +263,6 @@ const Messages: React.FC = () => {
                       {(() => {
                         const conversation = conversations.find(conv => conv.id === selectedId);
                         const canCall = conversation && canStartVideoCall(conversation);
-                        console.log('🎥 Rendering call buttons for conversation:', conversation?.id, 'Can call:', canCall);
                         return (
                           <>
                             <button

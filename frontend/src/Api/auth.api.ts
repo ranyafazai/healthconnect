@@ -10,8 +10,6 @@ export type AuthPayload = {
   phone?: string;
 };
 
-export const register = (data: AuthPayload) =>{ 
-    console.log("register", data);
-   return axios.post("/auth/register", data);}
+export const register = (data: AuthPayload) => axios.post("/auth/register", data);
 export const login = (data: AuthPayload) => axios.post("/auth/login", data);
 export const getMe = () => axios.get("/auth/me");

@@ -36,67 +36,47 @@ const chatSockets: Map<number, ReturnType<typeof getSocket>> = new Map();
 
 // Function to join appointment room
 export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
-  
-  
   const chatSocket = chatSockets.get(userId);
   if (chatSocket && chatSocket.connected) {
-    
     chatSocket.emit('join-appointment', appointmentId);
-    console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
   } else {
-    
+    // not connected
   }
 };
 
 export const connectChat = createAsyncThunk(
   'chat/connect',
   async (currentUserId: number, { dispatch }) => {
-  
-    
     // Check if user already has a socket connection
     if (chatSockets.has(currentUserId)) {
       const existingSocket = chatSockets.get(currentUserId);
       if (existingSocket && existingSocket.connected) {
-        
         return;
       } else {
-        
         chatSockets.delete(currentUserId);
       }
     }
-    
-    
+
     const chatSocket = getSocket('/chat');
-    
-    // Log socket state
-    
-    
+
     chatSockets.set(currentUserId, chatSocket);
 
     // Bind socket events before connecting
     const onNewMessage = (msg: Message) => {
-      
-      
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        
         dispatch(addMessage(msg));
-        
       } else {
-        
+        // ignore
       }
     };
 
     const onMessageSent = (msg: Message) => {
-      
-      
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        
         dispatch(addMessage(msg));
-        
       } else {
-        
+        // ignore
       }
     };
 
@@ -111,7 +91,6 @@ export const connectChat = createAsyncThunk(
     chatSocket.on('message-sent', onMessageSent);
 
     chatSocket.on('connect', () => {
-      
       dispatch(setIsConnected(true));
       chatSocket.emit('join-user', currentUserId);
       // Fetch unread count upon connect
@@ -119,20 +98,18 @@ export const connectChat = createAsyncThunk(
     });
 
     chatSocket.on('disconnect', () => {
-      
       dispatch(setIsConnected(false));
     });
 
     chatSocket.on('error', (error) => {
-      console.error('❌ Chat socket error for user', currentUserId, ':', error);
+      // socket error (silenced)
     });
 
     // If socket is already connected, emit join-user immediately
     if (chatSocket.connected) {
-      
       chatSocket.emit('join-user', currentUserId);
     } else {
-      
+      // will emit on connect
     }
   }
 );
@@ -140,7 +117,6 @@ export const connectChat = createAsyncThunk(
 export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId: number) => {
   const chatSocket = chatSockets.get(userId);
   if (chatSocket) {
-  
     chatSocket.disconnect();
     chatSockets.delete(userId);
   }

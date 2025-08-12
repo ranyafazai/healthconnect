@@ -1,4 +1,4 @@
-import React from 'react';
+// No React default import required
 import { Link } from 'react-router-dom';
 import { useDataPermissions } from '../hooks/useDataPermissions';
 

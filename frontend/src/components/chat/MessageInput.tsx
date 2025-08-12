@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 
 type Props = {
   onSend: (content: string) => void;
@@ -9,7 +10,7 @@ type Props = {
 export default function MessageInput({ onSend, onTypingStart, onTypingStop }: Props) {
   const [text, setText] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const content = text.trim();
     if (!content) return;

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,8 +7,6 @@ import {
   Star,
   CheckCircle,
   User,
-  Users,
-  FileText,
   Video,
   Info
 } from "lucide-react";
@@ -16,7 +14,7 @@ import type { RootState } from "../../Redux/store";
 import { fetchAppointmentsByDoctor } from "../../Redux/appointmentSlice/appointmentSlice";
 import { fetchNotifications } from "../../Redux/notificationSlice/notificationSlice";
 import { fetchDoctorReviews } from "../../Redux/reviewSlice/reviewSlice";
-import NotificationDropdown from "../../components/ui/NotificationDropdown";
+// Removed unused NotificationDropdown import
 import type { Appointment } from "../../types/data/appointment";
 import type { Review } from "../../types/data/review";
 
@@ -26,7 +24,6 @@ export default function Dashboard() {
   
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { appointments, loading: appointmentsLoading } = useAppSelector((state: RootState) => state.appointment);
-  const { notifications } = useAppSelector((state: RootState) => state.notification);
   const { reviews } = useAppSelector((state: RootState) => state.review);
   const { unreadCount } = useAppSelector((state: RootState) => state.chat as any);
 
@@ -63,14 +60,11 @@ export default function Dashboard() {
     apt.status === 'CONFIRMED' || apt.status === 'PENDING'
   );
   
-  const completedAppointments = appointments.filter((apt: Appointment) => 
-    apt.status === 'COMPLETED'
-  );
-  
-  const unreadNotifications = notifications.filter(notif => !notif.isRead);
+  // Derived values that may be used for future analytics or UI sections
+  // const completedAppointments = appointments.filter((apt: Appointment) => apt.status === 'COMPLETED');
 
   // Build rating distribution and top reviews using fetched reviews
-  const ratingDistribution = React.useMemo(() => {
+  const ratingDistribution = useMemo(() => {
     const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     for (const r of reviews as any[]) {
       const rating = Math.max(1, Math.min(5, Number((r as any).rating) || 0));
@@ -79,7 +73,7 @@ export default function Dashboard() {
     return dist;
   }, [reviews]);
 
-  const topReviews = React.useMemo(() => {
+  const topReviews = useMemo(() => {
     return [...(reviews as any[])]
       .sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0))
       .slice(0, 3);
@@ -152,15 +146,15 @@ export default function Dashboard() {
     })
   }));
 
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInHours < 48) return '1 day ago';
-    return `${Math.floor(diffInHours / 24)} days ago`;
-  };
+  // Helper reserved for future use
+  // const formatTimeAgo = (date: Date) => {
+  //   const now = new Date();
+  //   const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  //   if (diffInHours < 1) return 'Just now';
+  //   if (diffInHours < 24) return `${diffInHours} hours ago`;
+  //   if (diffInHours < 48) return '1 day ago';
+  //   return `${Math.floor(diffInHours / 24)} days ago`;
+  // };
 
   return (
     <div className="flex-1 bg-gray-50 p-6">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { fetchUserSettings, updateUserSettingsAsync } from '../../Redux/userSettingsSlice/userSettingsSlice';
@@ -104,20 +104,14 @@ export default function Settings() {
   };
 
   const handleSaveSettings = async () => {
-    try {
-      const allSettings = {
-        ...notificationSettings,
-        ...privacySettings,
-        ...securitySettings
-      };
+    const allSettings = {
+      ...notificationSettings,
+      ...privacySettings,
+      ...securitySettings
+    };
 
-      await dispatch(updateUserSettingsAsync(allSettings)).unwrap();
-      setIsEditing(false);
-      // Settings will be automatically updated in the Redux store
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      // Error is handled by Redux slice
-    }
+    await dispatch(updateUserSettingsAsync(allSettings)).unwrap();
+    setIsEditing(false);
   };
 
   const tabs = [

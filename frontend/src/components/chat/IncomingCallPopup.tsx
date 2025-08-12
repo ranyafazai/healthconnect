@@ -1,4 +1,4 @@
-import React from 'react';
+// No React default import required
 import { Phone, Video, PhoneOff, PhoneCall } from 'lucide-react';
 
 interface IncomingCallPopupProps {
