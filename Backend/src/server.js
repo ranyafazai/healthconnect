@@ -9,6 +9,7 @@ import registerChatSocket from "./sockets/chat.socket.js";
 import registerVideoCallSocket from "./sockets/videoCall.socket.js";
 import registerNotificationSocket from "./sockets/notification.socket.js";
 import logger from "./config/logger.js";
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = socketConfig.initSocket(server);
 
-// Register socket namespaces
+// Register socket namespaces with auth already enforced by initSocket
 const chatNamespace = registerChatSocket(io);
 const videoCallNamespace = registerVideoCallSocket(io);
 const notificationServices = registerNotificationSocket(io);
@@ -92,6 +93,43 @@ server.listen(PORT, () => {
   logger.info(`🔗 Chat namespace: /chat`);
   logger.info(`📹 Video call namespace: /video-call`);
   logger.info(`🔔 Notification namespace: /notifications`);
+});
+
+// Cron job: appointment reminders (runs every hour)
+cron.schedule('0 * * * *', async () => {
+  try {
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const upcoming = await prisma.appointment.findMany({
+      where: {
+        date: { gte: now, lte: in24h },
+        status: 'CONFIRMED'
+      },
+      include: { doctor: true, patient: true }
+    });
+    for (const apt of upcoming) {
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: apt.patient.userId,
+            type: 'APPOINTMENT',
+            content: `Reminder: Appointment with Dr. ${apt.doctor.firstName} ${apt.doctor.lastName} at ${apt.date.toLocaleString()}`
+          }
+        });
+        // Emit via socket if connected
+        const notificationNs = io.of('/notifications');
+        notificationNs.to(`user-${apt.patient.userId}`).emit('new-notification', {
+          type: 'APPOINTMENT',
+          content: `Reminder: Appointment with Dr. ${apt.doctor.firstName} ${apt.doctor.lastName} at ${apt.date.toLocaleString()}`
+        });
+      } catch (e) {
+        logger.warn('Failed to create/send reminder notification', e);
+      }
+    }
+    logger.info(`⏰ Appointment reminder cron ran. Processed: ${upcoming.length}`);
+  } catch (e) {
+    logger.error('Cron job error (appointment reminders):', e);
+  }
 });
 
 // Graceful shutdown

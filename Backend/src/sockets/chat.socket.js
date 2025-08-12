@@ -7,9 +7,21 @@ export default function registerChatSocket(io) {
   chatNamespace.on('connection', (socket) => {
     logger.info(`Chat socket connected: ${socket.id}`);
 
+    // Ensure user identity is present from auth middleware
+    if (!socket.userId) {
+      logger.warn('Chat socket missing userId from auth middleware, disconnecting');
+      socket.disconnect(true);
+      return;
+    }
+
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
       try {
+        // Prevent users from joining rooms other than their own
+        if (parseInt(userId) !== socket.userId) {
+          socket.emit('error', { message: 'Access denied' });
+          return;
+        }
         const user = await prisma.user.findUnique({
           where: { id: parseInt(userId) },
           include: {
@@ -23,7 +35,6 @@ export default function registerChatSocket(io) {
           return;
         }
 
-        socket.userId = user.id;
         socket.userRole = user.role;
         socket.join(`user-${user.id}`);
         
@@ -202,8 +213,11 @@ export default function registerChatSocket(io) {
       }
     });
 
-    // Handle disconnection
+    // Handle disconnection and cleanup
     socket.on('disconnect', () => {
+      try {
+        socket.removeAllListeners();
+      } catch {}
       logger.info(`Chat socket disconnected: ${socket.id}`);
     });
   });

@@ -7,9 +7,21 @@ export default function registerVideoCallSocket(io) {
   videoCallNamespace.on('connection', (socket) => {
     logger.info(`Video call socket connected: ${socket.id}`);
 
+    // Ensure user identity is present from auth middleware
+    if (!socket.userId) {
+      logger.warn('Video socket missing userId from auth middleware, disconnecting');
+      socket.disconnect(true);
+      return;
+    }
+
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
       try {
+        // Prevent users from joining rooms other than their own
+        if (parseInt(userId) !== socket.userId) {
+          socket.emit('error', { message: 'Access denied' });
+          return;
+        }
         const user = await prisma.user.findUnique({
           where: { id: parseInt(userId) },
           include: {
@@ -23,7 +35,6 @@ export default function registerVideoCallSocket(io) {
           return;
         }
 
-        socket.userId = user.id;
         socket.userRole = user.role;
         socket.join(`user-${user.id}`);
         
@@ -320,9 +331,10 @@ export default function registerVideoCallSocket(io) {
       }
     });
 
-    // Handle disconnection
+    // Handle disconnection with cleanup
     socket.on('disconnect', async () => {
       try {
+        try { socket.removeAllListeners(); } catch {}
         if (socket.roomId) {
           // Notify other participants
           socket.to(`call-${socket.roomId}`).emit('user-disconnected', {
