@@ -33,17 +33,21 @@ export default function DoctorSearchPage() {
   // Specialty options
   const specialties = [
     'All Specialties',
-    'Cardiologist',
-    'Dermatologist',
-    'Endocrinologist',
-    'Gynecologist',
-    'Neurologist',
-    'Oncologist',
-    'Orthopedist',
-    'Pediatrician',
-    'Psychiatrist',
-    'Radiologist',
-    'Surgeon'
+    'Cardiology',
+    'Family Medicine',
+    'Dermatology',
+    'Neurology',
+    'Pediatrics',
+    'Oncology',
+    'Psychiatry',
+    'Orthopedics',
+    'Endocrinology',
+    'Gastroenterology',
+    'Ophthalmology',
+    'Urology',
+    'Gynecology',
+    'Pulmonology',
+    'Rheumatology'
   ];
 
   // City options
@@ -94,14 +98,18 @@ export default function DoctorSearchPage() {
 
   // Initialize search on component mount
   useEffect(() => {
-    dispatch(searchDoctors({ 
+    const searchParams = { 
       query,
       specialty: filters.specialty,
       city: filters.city,
       minRating: filters.minRating,
       availability: filters.availability,
       sortBy
-    }));
+    };
+    
+    console.log('DoctorSearchPage: Triggering search with params:', searchParams);
+    
+    dispatch(searchDoctors(searchParams));
   }, [query, filters, sortBy, dispatch]);
 
   const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
