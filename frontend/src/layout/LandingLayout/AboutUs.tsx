@@ -1,4 +1,5 @@
 import { Button } from '../../components/ui/button';
+
 import { 
   Phone, 
   Mail, 
@@ -427,6 +428,7 @@ export function AboutUs() {
                 <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-3 rounded-lg">
                   Send Message
                 </Button>
+
               </form>
             </div>
           </div>
@@ -453,6 +455,7 @@ export function AboutUs() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

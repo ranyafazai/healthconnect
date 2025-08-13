@@ -44,7 +44,7 @@ export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
     chatSocket.emit('join-appointment', appointmentId);
     console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
   } else {
-    
+    // Socket not connected
   }
 };
 
@@ -79,11 +79,14 @@ export const connectChat = createAsyncThunk(
       
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
+        console.log('📨 Message is for this user, adding to state');
+        console.log('📨 Dispatching addMessage for user:', currentUserId);
         
         dispatch(addMessage(msg));
         
+        console.log('📨 Message dispatched to Redux state for user:', currentUserId);
       } else {
-        
+        // Message not for this user
       }
     };
 
@@ -92,17 +95,19 @@ export const connectChat = createAsyncThunk(
       
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        
         dispatch(addMessage(msg));
-        
       } else {
-        
+        // Message not for this user
       }
     };
 
-    const onJoined = (data: { userId: number; role: string }) => {};
+    const onJoined = () => {
+      // User joined chat room
+    };
 
-    const onAppointmentJoined = (data: { appointmentId: number }) => {};
+    const onAppointmentJoined = () => {
+      // User joined appointment room
+    };
 
     // Bind all events
     chatSocket.on('joined', onJoined);
@@ -115,7 +120,11 @@ export const connectChat = createAsyncThunk(
       dispatch(setIsConnected(true));
       chatSocket.emit('join-user', currentUserId);
       // Fetch unread count upon connect
-      try { axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); } catch {}
+      try { 
+        axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); 
+      } catch {
+        // Ignore unread count fetch errors
+      }
     });
 
     chatSocket.on('disconnect', () => {
@@ -132,7 +141,7 @@ export const connectChat = createAsyncThunk(
       
       chatSocket.emit('join-user', currentUserId);
     } else {
-      
+      // Socket not yet connected, waiting for connect event
     }
   }
 );
@@ -232,7 +241,18 @@ const chatSlice = createSlice({
       })
       .addCase(fetchConversation.fulfilled, (state, action) => {
         state.loadingMessages = false;
-        state.messages = action.payload;
+        // Merge messages instead of replacing to preserve socket messages
+        const existingMessageIds = new Set(state.messages.map(msg => msg.id));
+        const newMessages = action.payload.filter(msg => !existingMessageIds.has(msg.id));
+        
+        if (newMessages.length > 0) {
+          console.log('📥 Merging', newMessages.length, 'new conversation messages from API');
+          state.messages.push(...newMessages);
+          // Sort messages by creation time
+          state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        } else {
+          console.log('📥 No new conversation messages to merge from API');
+        }
       })
       .addCase(fetchConversation.rejected, (state) => {
         state.loadingMessages = false;
@@ -242,7 +262,18 @@ const chatSlice = createSlice({
       })
       .addCase(fetchAppointmentMessages.fulfilled, (state, action) => {
         state.loadingMessages = false;
-        state.messages = action.payload;
+        // Merge messages instead of replacing to preserve socket messages
+        const existingMessageIds = new Set(state.messages.map(msg => msg.id));
+        const newMessages = action.payload.filter(msg => !existingMessageIds.has(msg.id));
+        
+        if (newMessages.length > 0) {
+          console.log('📥 Merging', newMessages.length, 'new messages from API');
+          state.messages.push(...newMessages);
+          // Sort messages by creation time
+          state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        } else {
+          console.log('📥 No new messages to merge from API');
+        }
       })
       .addCase(fetchAppointmentMessages.rejected, (state) => {
         state.loadingMessages = false;
@@ -250,7 +281,7 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations } = chatSlice.actions;
+export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations, setUnreadCount } = chatSlice.actions;
 
 export const selectChat = (state: RootState) => state.chat as ChatState;
 

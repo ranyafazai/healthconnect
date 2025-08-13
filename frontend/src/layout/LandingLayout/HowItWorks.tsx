@@ -254,6 +254,7 @@ export function HowItWorks() {
         </div>
       </div>
 
+
       {/* How It Works Steps */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-16">
@@ -543,6 +544,7 @@ export function HowItWorks() {
                      <div className="flex flex-col sm:flex-row gap-4 justify-center">
              <Button 
                className="bg-white text-[#008CBA] hover:bg-gray-100 px-8 py-3 rounded-full text-lg font-semibold"
+
                onClick={() => window.location.href = '/auth/signup'}
              >
                Sign Up Now
@@ -555,6 +557,7 @@ export function HowItWorks() {
                Learn More
              </Button>
            </div>
+
         </div>
       </div>
     </div>

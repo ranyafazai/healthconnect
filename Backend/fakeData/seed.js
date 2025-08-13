@@ -662,6 +662,23 @@ async function main() {
     }
 
 
+    console.log('✅ Database seeding completed successfully!');
+    console.log(`\n📊 Summary of created data:`);
+    console.log(`👨‍⚕️  Doctors: ${doctors.length}`);
+    console.log(`👥 Patients: ${patients.length}`);
+
+    console.log(`📋 Medical Records: ${patients.length * 2} (average)`);
+    console.log(`💬 Messages: 50+ (including PatientTest consultation messages)`);
+    console.log(`🔔 Notifications: ${(doctors.length + patients.length) * 3} (average)`);
+    console.log(`📁 Files: ${doctors.length * 3 + patients.length * 2} (average)`);
+    
+    console.log(`\n🔑 Test Accounts:`);
+    console.log(`   Doctor: doctor.test@healthyconnect.com / DoctorPass123!`);
+    console.log(`   Patient: patient.test@mail.com / PatientPass123!`);
+    
+    console.log(`\n💡 The database now contains realistic test data for testing all features!`);
+    console.log(`📋 PatientTest now has 8 past consultations with messages and recordings for testing!`);
+
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;

@@ -99,8 +99,34 @@ export const getPastConsultations = (patientId: number, status?: string, limit?:
     params: { status, limit, offset }
   });
 
-export const getAppointmentById = (id: number) => 
-  axios.get<{ data: { data: Appointment } }>(`/appointments/${id}`);
+
+
+export const getPastConsultations = (patientId: number, status?: string, limit?: number, offset?: number) => 
+  axios.get<{ data: { data: UIConsultation[] } }>(`/appointments/past-consultations/${patientId}`, {
+    params: { status, limit, offset }
+  });
+
+
+
+export const getAppointmentById = (id: number) => {
+  const url = `/appointments/${id}`;
+  console.log('[appointments] GET', url);
+  return axios
+    .get<{ data: { data: Appointment } }>(url)
+    .then((res) => {
+      console.log('[appointments] OK', { status: res.status, url, data: res.data });
+      return res;
+    })
+    .catch((err) => {
+      console.error('[appointments] ERR', {
+        url,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      throw err;
+    });
+};
 
 
 export const updateAppointmentStatus = (id: number, status: AppointmentStatus) => 
