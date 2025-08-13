@@ -34,17 +34,11 @@ export default function DoctorProfilePage() {
 
   useEffect(() => {
     if (id) {
-      console.log('DoctorProfilePage - Dispatching getDoctorById with id:', id);
       dispatch(getDoctorById(parseInt(id)));
     }
   }, [id, dispatch]);
 
-  // Debug logging
-  console.log('DoctorProfilePage - id:', id);
-  console.log('DoctorProfilePage - currentDoctor:', currentDoctor);
-  console.log('DoctorProfilePage - loading:', loading);
-  console.log('DoctorProfilePage - error:', error);
-  console.log('DoctorProfilePage - Redux state:', { currentDoctor, loading, error });
+  
 
   const getDoctorInitials = (doctor: DoctorProfile) => {
     return `${doctor.firstName.charAt(0)}${doctor.lastName.charAt(0)}`.toUpperCase();
@@ -133,11 +127,9 @@ export default function DoctorProfilePage() {
 
   const handleBookAppointment = () => {
     if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      navigate('/auth/signin');
+      navigate('/how-to-book');
       return;
     }
-    // Navigate to booking process
     navigate(`/patient/booking?doctorId=${id}`);
   };
 
