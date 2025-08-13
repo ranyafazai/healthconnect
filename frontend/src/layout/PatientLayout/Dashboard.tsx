@@ -96,7 +96,6 @@ export default function Dashboard() {
 
   // Additional safety check for appointments and messages
   if (!Array.isArray(appointments) || !Array.isArray(messages)) {
-    console.warn('Dashboard: appointments or messages is not an array:', { appointments, messages });
     return (
       <div className="flex-1 bg-gray-50 p-6">
         <div className="flex items-center justify-center min-h-64">

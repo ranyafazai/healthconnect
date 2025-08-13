@@ -12,6 +12,57 @@ import {
 } from '../utils/responseFormatter.js';
 
 class ReviewController {
+  // Get review stats for a doctor
+  async getDoctorReviewStats(req, res) {
+    try {
+      const { doctorId } = req.params;
+      if (!doctorId) {
+        return res.status(400).json(errorResponse('Doctor ID is required', 400));
+      }
+
+      const id = parseInt(doctorId);
+
+      // Aggregate stats
+      const [totalReviews, avgResult, distribution] = await Promise.all([
+        prisma.review.count({ where: { doctorId: id } }),
+        prisma.review.aggregate({
+          _avg: { rating: true },
+          where: { doctorId: id },
+        }),
+        prisma.review.groupBy({
+          by: ['rating'],
+          _count: { rating: true },
+          where: { doctorId: id },
+        })
+      ]);
+
+      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      distribution.forEach((row) => {
+        ratingDistribution[row.rating] = row._count.rating;
+      });
+
+      const averageRating = Number(avgResult._avg.rating || 0);
+
+      // Basic analysis placeholder (can be expanded later)
+      const analysis = {
+        topFeedback: {},
+        commonKeywords: [],
+        sentiment: averageRating >= 4 ? 'positive' : averageRating >= 3 ? 'mixed' : 'negative',
+      };
+
+      const stats = {
+        totalReviews,
+        averageRating,
+        ratingDistribution,
+        analysis,
+      };
+
+      return res.json(successResponse(stats, 'Doctor review stats retrieved successfully'));
+    } catch (error) {
+      console.error('Get doctor review stats error:', error);
+      return res.status(500).json(serverErrorResponse('Failed to get doctor review stats'));
+    }
+  }
   // Create a review
   async createReview(req, res) {
     try {

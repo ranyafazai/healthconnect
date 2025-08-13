@@ -1,4 +1,3 @@
-import type { User } from './user';
 import type { Appointment } from '../data/appointment';
 import type { File } from './file';
 import type { VideoCall } from '../data/videoCall';
@@ -13,10 +12,10 @@ export interface Message {
   type: MessageType;
   fileId?: number;
   isRead: boolean;
-  createdAt: Date;
+  createdAt: Date | string; // Allow both Date and string for Redux serialization
 
-  sender?: User;
-  receiver?: User;
+  sender?: any; // Will be populated with User data from backend
+  receiver?: any; // Will be populated with User data from backend
   appointment?: Appointment;
   file?: File;
   videoCall?: VideoCall;

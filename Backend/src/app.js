@@ -90,6 +90,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Specific rate limiting for auth routes (more lenient for login attempts)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

@@ -97,7 +97,7 @@ function App() {
   }, [bookingData]);
 
   // Helper reserved for future validation of steps
-  // const canProceedToNextStep = () => {
+  const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1: // DateTime
         return bookingData.date && bookingData.time;
@@ -114,7 +114,7 @@ function App() {
       default:
         return true;
     }
-  // };
+  };
 
   const renderCurrentStep = () => {
     const doctor = doctors.find(d => d.id === parseInt(doctorId || '0'));
@@ -160,10 +160,12 @@ function App() {
     );
   }
 
+  //
+
   return (
     <div>
       <Navbar isAuthenticated={isAuthenticated} />
-      <div>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
         {renderCurrentStep()}
       </div>
     </div>

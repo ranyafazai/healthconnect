@@ -1,7 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 import type { RootState } from "../../Redux/store";
-import { clearAuth } from "../../Redux/authSlice/authSlice";
+import { logoutUser } from "../../Redux/authSlice/authSlice";
+import { clearProfile } from "../../Redux/userSlice/userSlice";
+import { clearPatient } from "../../Redux/patientSlice/patientSlice";
+import { clearMessages, disconnectChat } from "../../Redux/chatSlice/chatSlice";
+import { clearNotifications } from "../../Redux/notificationSlice/notificationSlice";
+import { disconnectAllSockets } from "../../lib/socket";
 import {
   Calendar,
   MessageSquare,
@@ -31,9 +36,28 @@ export default function Sidebar() {
         : "hover:bg-gray-100 text-gray-700 hover:text-[#008CBA]"
     }`;
 
-  const handleLogout = () => {
-    dispatch(clearAuth());
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      // Clear all other states
+      dispatch(clearProfile());
+      dispatch(clearPatient());
+      dispatch(clearMessages());
+      dispatch(clearNotifications());
+      // Disconnect all sockets
+      disconnectAllSockets();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if logout fails, clear local states and navigate away
+      dispatch(clearProfile());
+      dispatch(clearPatient());
+      dispatch(clearMessages());
+      dispatch(clearNotifications());
+      // Disconnect all sockets
+      disconnectAllSockets();
+      navigate('/');
+    }
   };
 
   const getUserInitials = () => {

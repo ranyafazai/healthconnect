@@ -20,7 +20,7 @@ function DoctorPage() {
       <Navbar isAuthenticated={isAuthenticated} />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-8 bg-gray-50">
+        <main className="flex-1  bg-gray-50">
           <Routes>
             {/* Dashboard - requires basic profile read permission */}
             <Route 

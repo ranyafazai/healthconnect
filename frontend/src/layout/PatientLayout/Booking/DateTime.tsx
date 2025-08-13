@@ -84,7 +84,6 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
       const response = await getDoctorAvailability(doctor.id, selectedDate);
       setAvailableSlots(response.data.data.availableSlots || timeSlots);
     } catch (error) {
-      console.error('Error fetching availability:', error);
       setError('Failed to load availability. Showing default time slots.');
       // Fallback to all time slots if API fails
       setAvailableSlots(timeSlots);

@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type FormEvent, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { fetchUserProfile, updateUserProfile, uploadProfilePhoto } from "../../../Redux/userSlice/userSlice";
 import type { RootState } from "../../../Redux/store";
+import { getUploadedFileUrl } from "../../../utils/fileUrl";
 
 export default function BasicInfo() {
   const dispatch = useAppDispatch();
@@ -99,7 +100,7 @@ export default function BasicInfo() {
           <div className="w-24 h-24 bg-cyan-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
             {photo ? (
               <img
-                src={photo}
+                src={getUploadedFileUrl({ url: photo })}
                 alt="Profile"
                 className="rounded-full w-24 h-24 object-cover"
               />

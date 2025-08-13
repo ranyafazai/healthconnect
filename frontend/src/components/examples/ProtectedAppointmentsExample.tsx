@@ -5,16 +5,7 @@ import { fetchAppointments } from '../../Redux/appointmentSlice/appointmentSlice
 import { useDataPermissions } from '../../hooks/useDataPermissions';
 import PermissionGuard from '../auth/PermissionGuard';
 import { PERMISSIONS } from '../../lib/permissions';
-
-interface Appointment {
-  id: number;
-  patientId: number;
-  doctorId: number;
-  date: string;
-  status: string;
-  type: string;
-  notes?: string;
-}
+import type { Appointment } from '../../types/data/appointment';
 
 const ProtectedAppointmentsExample: React.FC = () => {
   const dispatch = useAppDispatch();

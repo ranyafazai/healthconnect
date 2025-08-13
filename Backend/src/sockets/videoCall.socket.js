@@ -4,6 +4,45 @@ import logger from '../config/logger.js';
 export default function registerVideoCallSocket(io) {
   const videoCallNamespace = io.of('/video-call');
 
+  // Apply auth middleware to video call namespace
+  videoCallNamespace.use((socket, next) => {
+    try {
+      // Check if user ID is provided in auth object for development
+      const userId = socket.handshake.auth?.userId;
+      if (userId) {
+        
+        socket.userId = parseInt(userId);
+        return next();
+      }
+      
+      // Try to get token from auth or headers
+      let token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '') || null;
+      
+      // Try to parse httpOnly cookie header if present
+      if (!token && socket.handshake.headers?.cookie) {
+        const cookieHeader = socket.handshake.headers.cookie;
+        const parts = cookieHeader.split(';').map((c) => c.trim());
+        const tokenCookie = parts.find((p) => p.startsWith('token='));
+        if (tokenCookie) {
+          token = decodeURIComponent(tokenCookie.split('=')[1]);
+        }
+      }
+      
+      if (token) {
+        const jwt = require('jsonwebtoken');
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-me');
+        socket.userId = payload.id;
+        return next();
+      }
+      
+      socket.userId = null;
+      return next();
+    } catch (err) {
+      socket.userId = null;
+      return next();
+    }
+  });
+
   videoCallNamespace.on('connection', (socket) => {
     logger.info(`Video call socket connected: ${socket.id}`);
 
@@ -13,6 +52,8 @@ export default function registerVideoCallSocket(io) {
       socket.disconnect(true);
       return;
     }
+
+    
 
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
@@ -41,6 +82,7 @@ export default function registerVideoCallSocket(io) {
         logger.info(`User ${user.id} joined video call room`);
         socket.emit('joined', { userId: user.id, role: user.role });
       } catch (error) {
+        console.error('❌ Error joining user to video call:', error);
         logger.error('Error joining user to video call:', error);
         socket.emit('error', { message: 'Failed to join video call' });
       }
@@ -70,26 +112,26 @@ export default function registerVideoCallSocket(io) {
           return;
         }
 
-        // Check if user is part of this appointment by comparing user IDs
-        // appointment.doctor.user.id and appointment.patient.user.id are the actual user IDs
-        
-        // Debug logging to understand the data structure
-        logger.info(`Video call appointment data for ${appointmentId}:`, {
-          appointmentId: appointment.id,
-          doctorProfileId: appointment.doctorId,
-          patientProfileId: appointment.patientId,
-          doctorUserId: appointment.doctor?.user?.id,
-          patientUserId: appointment.patient?.user?.id,
-          socketUserId: socket.userId
-        });
-        
-        if (
-          socket.userId !== appointment.doctor.user.id &&
-          socket.userId !== appointment.patient.user.id
-        ) {
-          logger.error(`Access denied for user ${socket.userId} to video call appointment ${appointmentId}`);
-          logger.error(`Expected: doctor.user.id=${appointment.doctor.user.id} or patient.user.id=${appointment.patient.user.id}`);
-          socket.emit('error', { message: 'Access denied' });
+        // Enforce participant check
+        const doctorUserId = appointment.doctor?.user?.id;
+        const patientUserId = appointment.patient?.user?.id;
+        const isParticipant = socket.userId === doctorUserId || socket.userId === patientUserId;
+        if (!isParticipant) {
+          socket.emit('error', { message: 'Access denied: not a participant in this appointment' });
+          return;
+        }
+
+        // Enforce appointment type and time window for calls (VIDEO type only)
+        if (appointment.type !== 'VIDEO') {
+          socket.emit('error', { message: 'Calls are only available for VIDEO type appointments' });
+          return;
+        }
+        const now = new Date();
+        const apptDate = new Date(appointment.date);
+        const activeWindowMs = 30 * 60 * 1000;
+        const isWithinWindow = Math.abs(now.getTime() - apptDate.getTime()) <= activeWindowMs;
+        if (!isWithinWindow) {
+          socket.emit('error', { message: 'Calls available only during appointment time window' });
           return;
         }
 
@@ -125,6 +167,8 @@ export default function registerVideoCallSocket(io) {
               status: 'PENDING',
             },
           });
+        } else {
+          
         }
 
         // Join the room
@@ -150,6 +194,18 @@ export default function registerVideoCallSocket(io) {
           roomId: videoCall.roomId,
         });
 
+        // Also notify users in their personal rooms about the call
+        const otherUserId = socket.userId === appointment.doctor.userId
+          ? appointment.patient.userId
+          : appointment.doctor.userId;
+        
+        socket.to(`user-${otherUserId}`).emit('call-joined', {
+          roomId: videoCall.roomId,
+          appointmentId: appointment.id,
+          videoCallId: videoCall.id,
+          joinedBy: socket.userId
+        });
+
         logger.info(
           `User ${socket.userId} joined video call room ${videoCall.roomId}`
         );
@@ -159,6 +215,7 @@ export default function registerVideoCallSocket(io) {
           videoCallId: videoCall.id,
         });
       } catch (error) {
+        console.error('❌ Error joining video call:', error);
         logger.error('Error joining video call:', error);
         socket.emit('error', { message: 'Failed to join video call' });
       }
@@ -166,10 +223,12 @@ export default function registerVideoCallSocket(io) {
 
     // Handle WebRTC signaling
     socket.on('offer', (data) => {
-      const { targetUserId, offer } = data;
+      const { targetUserId, offer, callType } = data;
       socket.to(`user-${targetUserId}`).emit('offer', {
         offer,
-        fromUserId: socket.userId
+        fromUserId: socket.userId,
+        appointmentId: socket.appointmentId,
+        callType: callType || 'VIDEO'
       });
       logger.info(`Offer sent from ${socket.userId} to ${targetUserId}`);
     });
@@ -189,6 +248,21 @@ export default function registerVideoCallSocket(io) {
         candidate,
         fromUserId: socket.userId
       });
+    });
+
+    // Caller cancels before receiver joins room
+    socket.on('cancel-call', (data) => {
+      try {
+        const { targetUserId, appointmentId } = data || {};
+        if (!targetUserId) return;
+        videoCallNamespace.to(`user-${targetUserId}`).emit('call-cancelled', {
+          cancelledBy: socket.userId,
+          appointmentId: appointmentId || socket.appointmentId || null,
+        });
+        logger.info(`Call cancelled by ${socket.userId} for ${targetUserId}`);
+      } catch (err) {
+        logger.error('Error handling cancel-call:', err);
+      }
     });
 
     // Handle call controls
@@ -281,10 +355,27 @@ export default function registerVideoCallSocket(io) {
           });
         }
 
-        // Notify other participants
+        // Notify other participants in the room
         socket.to(`call-${socket.roomId}`).emit('call-ended', {
           endedBy: socket.userId
         });
+
+        // Also notify the other user in their personal room (in case they haven't joined the call room yet)
+        try {
+          const appointment = await prisma.appointment.findUnique({
+            where: { id: socket.appointmentId },
+            include: { doctor: { include: { user: true } }, patient: { include: { user: true } } },
+          });
+          if (appointment) {
+            const otherUserId = socket.userId === appointment.doctor.user.id
+              ? appointment.patient.user.id
+              : appointment.doctor.user.id;
+            videoCallNamespace.to(`user-${otherUserId}`).emit('call-ended', {
+              endedBy: socket.userId,
+              appointmentId: socket.appointmentId,
+            });
+          }
+        } catch {}
 
         // Leave the room
         socket.leave(`call-${socket.roomId}`);
@@ -295,6 +386,15 @@ export default function registerVideoCallSocket(io) {
         logger.error('Error ending call:', error);
         socket.emit('error', { message: 'Failed to end call' });
       }
+    });
+
+    // Handle call decline
+    socket.on('call-declined', (data) => {
+      const { targetUserId } = data;
+      socket.to(`user-${targetUserId}`).emit('call-declined', {
+        declinedBy: socket.userId
+      });
+      logger.info(`Call declined by ${socket.userId} for ${targetUserId}`);
     });
 
     // Handle call timeout

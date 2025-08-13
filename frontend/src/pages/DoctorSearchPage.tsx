@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import type { DoctorProfile } from '../types/data/doctor';
+import { getUploadedFileUrl } from '../utils/fileUrl';
 
 export default function DoctorSearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -468,7 +469,7 @@ export default function DoctorSearchPage() {
                       <div className="flex-shrink-0">
                         {doctor.photo ? (
                           <img
-                            src={doctor.photo.url}
+                            src={getUploadedFileUrl(doctor.photo)}
                             alt={`${doctor.firstName} ${doctor.lastName}`}
                             className="w-12 h-12 rounded-full object-cover"
                           />

@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import type { UserLite } from "../../types/user";
-import { getMe } from "../../Api/auth.api";
+import { getMe, logout } from "../../Api/auth.api";
 
 interface LocalAuthState {
   isAuthenticated: boolean;
@@ -54,6 +54,17 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.error = action.payload as string;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.error = null;
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        // Even if logout fails on backend, clear local state
+        state.isAuthenticated = false;
+        state.user = null;
+        state.error = action.payload as string;
       });
   },
 });
@@ -67,6 +78,19 @@ export const checkAuthStatus = createAsyncThunk(
       return response.data.user;
     } catch (error) {
       return rejectWithValue('Authentication failed');
+    }
+  }
+);
+
+// Async thunk to logout
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await logout();
+      return true;
+    } catch (error) {
+      return rejectWithValue('Logout failed');
     }
   }
 );

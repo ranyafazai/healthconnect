@@ -185,11 +185,16 @@ class AppointmentController {
         prisma.appointment.findMany({
           where: { patientId: parseInt(patientId) },
           include: {
-          doctor: {
-            include: {
-              user: true
+            doctor: {
+              include: {
+                user: true
+              }
+            },
+            patient: {
+              include: {
+                user: true
+              }
             }
-          }
           },
           orderBy: { date: 'desc' },
           skip,

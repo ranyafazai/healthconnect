@@ -8,22 +8,25 @@ const __dirname = path.dirname(__filename);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let folder = "media/";
+    let folder = "uploads/";
 
-    switch (req.uploadType) {
-      case "avatar":
+    // Use fileType from body or default to messages for chat media
+    const fileType = req.body.fileType || 'CHAT_MEDIA';
+    
+    switch (fileType) {
+      case "PROFILE_PICTURE":
         folder += "avatars";
         break;
-      case "message":
+      case "CHAT_MEDIA":
         folder += "messages";
         break;
-      case "certification":
+      case "CERTIFICATION":
         folder += "certifications";
         break;
-      case "medical-record":
+      case "MEDICAL_DOCUMENT":
         folder += "medical-records";
         break;
-      case "consultation-recording":
+      case "CONSULTATION_RECORDING":
         folder += "consultation-recordings";
         break;
       default:

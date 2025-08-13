@@ -33,8 +33,13 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
     // Connect to notification socket
     socketRef.current = getSocket('/notifications');
     
-    // Join user to notification room
-    socketRef.current.emit('join-user', user.id);
+    // Connect the socket
+    socketRef.current.connect();
+    
+    // Join user to notification room after connection
+    socketRef.current.on('connect', () => {
+      socketRef.current.emit('join-user', user.id);
+    });
 
     // Listen for new notifications
     socketRef.current.on('new-notification', (_notification: Notification) => {
@@ -55,7 +60,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
 
     // Cleanup on unmount
     return () => {
-      if (socketRef.current) {
+      if (socketRef.current && socketRef.current.connected) {
         socketRef.current.disconnect();
       }
     };
@@ -77,12 +82,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.isRead) {
-      try {
-        await dispatch(markAsRead(notification.id)).unwrap();
-        // Socket will emit 'notification-read' event
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
-      }
+      await dispatch(markAsRead(notification.id)).unwrap();
     }
 
     // Handle navigation based on notification type

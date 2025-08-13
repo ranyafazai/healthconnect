@@ -9,6 +9,8 @@ interface VideoCallProps {
   otherUserId: number;
   currentUserId: number;
   roomId?: string;
+  isInitiator?: boolean;
+  initialOffer?: RTCSessionDescriptionInit | null;
 }
 
 export default function VideoCall({ 
@@ -17,7 +19,9 @@ export default function VideoCall({
   appointmentId, 
   otherUserId, 
   currentUserId,
-  roomId 
+  roomId,
+  isInitiator = false,
+  initialOffer = null
 }: VideoCallProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -35,6 +39,7 @@ export default function VideoCall({
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCreatedOfferRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,7 +66,6 @@ export default function VideoCall({
     try {
       setError(null);
       
-      // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
@@ -72,11 +76,23 @@ export default function VideoCall({
         localVideoRef.current.srcObject = stream;
       }
 
-      // Initialize WebRTC
       await initializeWebRTC();
-      
-      // Connect to socket
       connectToSocket();
+
+      // If receiver has initial offer, answer immediately
+      if (!isInitiator && initialOffer && peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(initialOffer));
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+          socketRef.current?.emit('answer', {
+            targetUserId: otherUserId,
+            answer
+          });
+        } catch (err) {
+          console.error('Error applying initial offer/creating answer (video):', err);
+        }
+      }
       
     } catch (err) {
       console.error('Failed to initialize call:', err);
@@ -86,7 +102,6 @@ export default function VideoCall({
 
   const initializeWebRTC = async () => {
     try {
-      // Fetch dynamic ICE servers from backend (includes TURN if configured)
       let configuration: RTCConfiguration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
       try {
         const res = await fetch('/api/webrtc-config');
@@ -100,14 +115,12 @@ export default function VideoCall({
 
       peerConnectionRef.current = new RTCPeerConnection(configuration);
 
-      // Add local stream tracks
       localStreamRef.current?.getTracks().forEach(track => {
         if (peerConnectionRef.current) {
           peerConnectionRef.current.addTrack(track, localStreamRef.current!);
         }
       });
 
-      // Handle incoming streams
       peerConnectionRef.current.ontrack = (event) => {
         remoteStreamRef.current = event.streams[0];
         if (remoteVideoRef.current) {
@@ -115,7 +128,6 @@ export default function VideoCall({
         }
       };
 
-      // Handle ICE candidates
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && socketRef.current) {
           socketRef.current.emit('ice-candidate', {
@@ -125,7 +137,6 @@ export default function VideoCall({
         }
       };
 
-      // Handle connection state changes
       peerConnectionRef.current.onconnectionstatechange = () => {
         if (peerConnectionRef.current?.connectionState === 'connected') {
           setIsConnected(true);
@@ -148,28 +159,26 @@ export default function VideoCall({
       });
 
       socketRef.current.on('call-joined', async (data: any) => {
-        // joined call
-        if (data.roomId) {
-          // Initiator flow: create and send offer if we are the earlier joiner
+        if (data.roomId && isInitiator && !hasCreatedOfferRef.current) {
           try {
             if (peerConnectionRef.current) {
+              hasCreatedOfferRef.current = true;
               const offer = await peerConnectionRef.current.createOffer();
               await peerConnectionRef.current.setLocalDescription(offer);
               socketRef.current?.emit('offer', {
                 targetUserId: otherUserId,
-                offer
+                offer,
+                callType: 'VIDEO'
               });
             }
           } catch (e) {
-            console.error('Error creating initial offer:', e);
+            console.error('Error creating initial offer (video):', e);
+            hasCreatedOfferRef.current = false;
           }
         }
       });
 
-      socketRef.current.on('user-joined-call', (data: any) => {
-        // peer joined
-        // Other user joined the call
-      });
+      socketRef.current.on('user-joined-call', (_data: any) => {});
 
       socketRef.current.on('offer', async (data: any) => {
         if (peerConnectionRef.current) {
@@ -177,13 +186,12 @@ export default function VideoCall({
             await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await peerConnectionRef.current.createAnswer();
             await peerConnectionRef.current.setLocalDescription(answer);
-            
             socketRef.current?.emit('answer', {
               targetUserId: data.fromUserId,
               answer
             });
           } catch (err) {
-            console.error('Error handling offer:', err);
+            console.error('Error handling offer (video):', err);
           }
         }
       });
@@ -193,7 +201,7 @@ export default function VideoCall({
           try {
             await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
           } catch (err) {
-            console.error('Error handling answer:', err);
+            console.error('Error handling answer (video):', err);
           }
         }
       });
@@ -203,7 +211,7 @@ export default function VideoCall({
           try {
             await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
           } catch (err) {
-            console.error('Error adding ICE candidate:', err);
+            console.error('Error adding ICE candidate (video):', err);
           }
         }
       });
@@ -212,9 +220,21 @@ export default function VideoCall({
         handleEndCall();
       });
 
-      socketRef.current.on('error', (data: any) => {
-        setError(data.message || 'Call error occurred');
+      socketRef.current.on('call-declined', (data: any) => {
+        setError('Call was declined by the other user.');
+        setTimeout(() => {
+          handleEndCall();
+        }, 2000);
       });
+
+      socketRef.current.on('call-cancelled', (data: any) => {
+        setError('Caller cancelled the call.');
+        setTimeout(() => handleEndCall(), 1000);
+      });
+
+      // Explicit connect with auth
+      socketRef.current.auth = { userId: currentUserId };
+      socketRef.current.connect();
 
     } catch (err) {
       console.error('Failed to connect to socket:', err);
@@ -306,6 +326,10 @@ export default function VideoCall({
   };
 
   const handleEndCall = () => {
+    // If we are initiator and socket exists, inform receiver even if not in room
+    if (isInitiator && socketRef.current) {
+      socketRef.current.emit('cancel-call', { targetUserId: otherUserId, appointmentId });
+    }
     cleanupCall();
     onClose();
   };

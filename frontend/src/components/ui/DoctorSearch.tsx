@@ -5,6 +5,7 @@ import type { RootState } from '../../Redux/store';
 import { searchDoctors, setSearchQuery, clearSearchResults } from '../../Redux/doctorSlice/doctorSlice';
 import { Search, MapPin, Star, Clock, User } from 'lucide-react';
 import type { DoctorProfile } from '../../types/data/doctor';
+import { getUploadedFileUrl } from '../../utils/fileUrl';
 
 interface DoctorSearchProps {
   className?: string;
@@ -131,7 +132,7 @@ export default function DoctorSearch({
                   <div className="flex-shrink-0">
                     {doctor.photo ? (
                       <img
-                        src={doctor.photo?.path || '/default-doctor-avatar.png'}
+                        src={getUploadedFileUrl(doctor.photo)}
                         alt={`${doctor.firstName} ${doctor.lastName}`}
                         className="w-12 h-12 rounded-full object-cover"
                       />

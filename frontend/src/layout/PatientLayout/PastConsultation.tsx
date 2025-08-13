@@ -4,6 +4,7 @@ import { Calendar, Clock, User, FileText, Star, MessageSquare } from 'lucide-rea
 import { fetchAppointmentsByPatient } from '../../Redux/appointmentSlice/appointmentSlice';
 import { fetchPatientReviews } from '../../Redux/reviewSlice/reviewSlice';
 import type { Appointment } from '../../types/data/appointment';
+import { useReviewModalContext } from '../../contexts/ReviewModalContext';
 
 type FilterStatus = 'ALL' | 'COMPLETED' | 'CANCELLED';
 
@@ -23,6 +24,7 @@ interface UIConsultation {
 
 export default function PastConsultation() {
   const dispatch = useAppDispatch();
+  const { openReviewModal } = useReviewModalContext();
 
   const { user } = useAppSelector((state) => state.auth);
   const { appointments, loading: appointmentsLoading } = useAppSelector((state) => state.appointment);
@@ -308,6 +310,19 @@ export default function PastConsultation() {
                 <div className="flex gap-3 pt-4 border-t">
                   <button onClick={handleDownload} className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 transition-colors">
                     Download Report
+                  </button>
+                  
+                  {/* Test Review Button */}
+                  <button 
+                    onClick={() => {
+                      const doctorName = selectedConsultation?.doctorName || 'Unknown Doctor';
+                      const doctorId = selectedConsultation?.doctorId || 0;
+                      const appointmentId = selectedConsultation?.appointmentId || 0;
+                      openReviewModal(doctorId, doctorName, appointmentId);
+                    }}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    🧪 Test Review
                   </button>
                 </div>
               </div>

@@ -9,6 +9,8 @@ interface AudioCallProps {
   otherUserId: number;
   currentUserId: number;
   roomId?: string;
+  isInitiator?: boolean;
+  initialOffer?: RTCSessionDescriptionInit | null;
 }
 
 export default function AudioCall({ 
@@ -17,27 +19,38 @@ export default function AudioCall({
   appointmentId, 
   otherUserId, 
   currentUserId,
-  roomId 
+  roomId,
+  isInitiator = false,
+  initialOffer = null
 }: AudioCallProps) {
+  
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [callDuration, setCallDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+  // Using ref guard instead of state to avoid StrictMode double render issues
 
   const socketRef = useRef<any>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCreatedOfferRef = useRef<boolean>(false);
+  const hasInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isInitializing) {
+      setIsInitializing(true);
       initializeCall();
-    } else {
+    } else if (!isOpen) {
       cleanupCall();
+      setIsInitializing(false);
     }
   }, [isOpen]);
+
+  // (Removed StrictMode unmount cleanup to avoid duplicate init/cleanup causing SDP mid errors)
 
   useEffect(() => {
     if (isConnected) {
@@ -53,31 +66,20 @@ export default function AudioCall({
   }, [isConnected]);
 
   const initializeCall = async () => {
+    if (hasInitializedRef.current) {
+      return;
+    }
+    hasInitializedRef.current = true;
+
     try {
-      setError(null);
-      
-      // Get user media (audio only)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false
-      });
-      
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
       // Initialize WebRTC
-      await initializeWebRTC();
       
-      // Connect to socket
-      connectToSocket();
-      
-    } catch (err) {
-      console.error('Failed to initialize call:', err);
-      setError('Failed to access microphone. Please check permissions.');
-    }
-  };
-
-  const initializeWebRTC = async () => {
-    try {
+      // Only create peer connection if it doesn't exist
+      if (!peerConnectionRef.current) {
       const configuration = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -87,23 +89,19 @@ export default function AudioCall({
 
       peerConnectionRef.current = new RTCPeerConnection(configuration);
 
-      // Add local stream tracks
-      localStreamRef.current?.getTracks().forEach(track => {
+        // Add local stream to peer connection
+        stream.getTracks().forEach(track => {
         if (peerConnectionRef.current) {
-          peerConnectionRef.current.addTrack(track, localStreamRef.current!);
+            peerConnectionRef.current.addTrack(track, stream);
         }
       });
 
-      // Handle incoming streams
+        // Set up event handlers for peer connection
       peerConnectionRef.current.ontrack = (event) => {
         remoteStreamRef.current = event.streams[0];
-        // Play remote audio
-        const audioElement = new Audio();
-        audioElement.srcObject = event.streams[0];
-        audioElement.play().catch(console.error);
+          setIsConnected(true);
       };
 
-      // Handle ICE candidates
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && socketRef.current) {
           socketRef.current.emit('ice-candidate', {
@@ -113,16 +111,33 @@ export default function AudioCall({
         }
       };
 
-      // Handle connection state changes
       peerConnectionRef.current.onconnectionstatechange = () => {
         if (peerConnectionRef.current?.connectionState === 'connected') {
-          setIsConnected(true);
-        }
-      };
+          }
+        };
+      }
 
-    } catch (err) {
-      console.error('Failed to initialize WebRTC:', err);
-      setError('Failed to initialize audio call.');
+      // Connect to socket
+      await connectToSocket();
+
+      // If we are the receiver and have an initial offer, answer immediately
+      if (!isInitiator && initialOffer && peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(initialOffer));
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+          socketRef.current?.emit('answer', {
+            targetUserId: otherUserId,
+            answer
+          });
+        } catch (err) {
+          console.error('❌ Error applying initial offer/creating answer:', err);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Error initializing call:', error);
+      setError('Failed to initialize call. Please check your microphone permissions.');
     }
   };
 
@@ -130,22 +145,44 @@ export default function AudioCall({
     try {
       socketRef.current = getSocket('/video-call'); // Using same namespace for audio calls
       
+      // Set up event listeners before connecting
       socketRef.current.on('connect', () => {
         socketRef.current?.emit('join-user', currentUserId);
         socketRef.current?.emit('join-call', { appointmentId, roomId });
       });
 
+      socketRef.current.on('call-cancelled', (data: any) => {
+        setError('Caller cancelled the call.');
+        setTimeout(() => handleEndCall(), 1000);
+      });
+
       socketRef.current.on('call-joined', (data: any) => {
-        console.log('Joined audio call:', data);
-        if (data.roomId) {
-          // Room joined successfully
+        if (data.roomId && isInitiator && !hasCreatedOfferRef.current) {
+          // Create and send offer if we are initiator and haven't created an offer yet
+          try {
+            if (peerConnectionRef.current) {
+              hasCreatedOfferRef.current = true;
+              peerConnectionRef.current.createOffer().then(offer => {
+                return peerConnectionRef.current!.setLocalDescription(offer);
+              }).then(() => {
+                socketRef.current?.emit('offer', {
+                  targetUserId: otherUserId,
+                  offer: peerConnectionRef.current!.localDescription,
+                  callType: 'AUDIO'
+                });
+              }).catch(e => {
+                console.error('❌ Error creating initial offer:', e);
+                hasCreatedOfferRef.current = false;
+              });
+            }
+          } catch (e) {
+            console.error('❌ Error creating initial offer:', e);
+            hasCreatedOfferRef.current = false;
+          }
         }
       });
 
-      socketRef.current.on('user-joined-call', (data: any) => {
-        console.log('User joined audio call:', data);
-        // Other user joined the call
-      });
+      socketRef.current.on('user-joined-call', (_data: any) => {});
 
       socketRef.current.on('offer', async (data: any) => {
         if (peerConnectionRef.current) {
@@ -159,7 +196,7 @@ export default function AudioCall({
               answer
             });
           } catch (err) {
-            console.error('Error handling offer:', err);
+            console.error('❌ Error handling offer:', err);
           }
         }
       });
@@ -169,7 +206,7 @@ export default function AudioCall({
           try {
             await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
           } catch (err) {
-            console.error('Error handling answer:', err);
+            console.error('❌ Error handling answer:', err);
           }
         }
       });
@@ -179,7 +216,7 @@ export default function AudioCall({
           try {
             await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
           } catch (err) {
-            console.error('Error adding ICE candidate:', err);
+            console.error('❌ Error adding ICE candidate:', err);
           }
         }
       });
@@ -188,12 +225,24 @@ export default function AudioCall({
         handleEndCall();
       });
 
+      socketRef.current.on('call-declined', (data: any) => {
+        setError('Call was declined by the other user.');
+        setTimeout(() => {
+          handleEndCall();
+        }, 2000);
+      });
+
       socketRef.current.on('error', (data: any) => {
+        console.error('❌ Socket error:', data);
         setError(data.message || 'Call error occurred');
       });
 
+      // Connect to the socket with auth
+      socketRef.current.auth = { userId: currentUserId };
+      socketRef.current.connect();
+
     } catch (err) {
-      console.error('Failed to connect to socket:', err);
+      console.error('❌ Failed to connect to socket:', err);
       setError('Failed to connect to call server.');
     }
   };
@@ -215,14 +264,22 @@ export default function AudioCall({
   };
 
   const handleEndCall = () => {
+    // If we are initiator and socket exists, inform receiver even if not in room
+    if (isInitiator && socketRef.current) {
+      socketRef.current.emit('cancel-call', { targetUserId: otherUserId, appointmentId });
+    }
     cleanupCall();
     onClose();
   };
 
   const cleanupCall = () => {
     // Stop all tracks
-    localStreamRef.current?.getTracks().forEach(track => track.stop());
-    remoteStreamRef.current?.getTracks().forEach(track => track.stop());
+    localStreamRef.current?.getTracks().forEach(track => {
+      track.stop();
+    });
+    remoteStreamRef.current?.getTracks().forEach(track => {
+      track.stop();
+    });
     
     // Close peer connection
     if (peerConnectionRef.current) {
@@ -243,12 +300,15 @@ export default function AudioCall({
     setIsSpeakerOn(true);
     setCallDuration(0);
     setError(null);
+    hasCreatedOfferRef.current = false;
+    hasInitializedRef.current = false;
     
     // Clear interval
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
     }
+    
   };
 
   const formatDuration = (seconds: number) => {

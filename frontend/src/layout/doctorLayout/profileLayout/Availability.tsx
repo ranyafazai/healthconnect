@@ -150,7 +150,6 @@ export default function Availability() {
       dispatch(fetchUserProfile());
       setUpdateMessage({ type: 'success', text: 'Availability updated successfully!' });
     } catch (error) {
-      console.error('Failed to update availability:', error);
       setUpdateMessage({ type: 'error', text: 'Failed to update availability. Please try again.' });
     } finally {
       setIsUpdating(false);

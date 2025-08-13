@@ -7,15 +7,19 @@ if (process.env.NODE_ENV === 'development') {
     const before = Date.now();
     const result = await next(params);
     const after = Date.now();
-    console.log(`Query ${params.model}.${params.action} took ${after - before}ms`);
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`Query ${params.model}.${params.action} took ${after - before}ms`);
+    }
     return result;
   });
 }
 
 prisma.$on('query', (e) => {
-  console.log('Query: ' + e.query);
-  console.log('Params: ' + e.params);
-  console.log('Duration: ' + e.duration + 'ms');
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log('Query: ' + e.query);
+    console.log('Params: ' + e.params);
+    console.log('Duration: ' + e.duration + 'ms');
+  }
 });
 
 module.exports = prisma;

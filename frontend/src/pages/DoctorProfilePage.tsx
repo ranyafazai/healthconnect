@@ -18,6 +18,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import type { DoctorProfile } from '../types/data/doctor';
+import { getUploadedFileUrl } from '../utils/fileUrl';
 
 export default function DoctorProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -242,7 +243,7 @@ export default function DoctorProfilePage() {
             <div className="flex-shrink-0">
                               {currentDoctor.photo ? (
                   <img
-                    src={currentDoctor.photo.url}
+                    src={getUploadedFileUrl(currentDoctor.photo)}
                     alt={`${currentDoctor.firstName} ${currentDoctor.lastName}`}
                     className="w-24 h-24 rounded-full object-cover"
                   />

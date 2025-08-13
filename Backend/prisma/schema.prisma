@@ -224,6 +224,10 @@ model File {
   id          Int               @id @default(autoincrement())
   ownerId     Int
   url         String
+  filename    String?
+  originalname String?
+  mimetype    String?
+  size        Int?
   fileType    FileType
   createdAt   DateTime          @default(now())
 

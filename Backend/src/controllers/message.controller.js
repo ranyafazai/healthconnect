@@ -1,5 +1,6 @@
 import { prisma } from '../app.js';
 import socketConfig from '../config/socket.js';
+import logger from '../config/logger.js';
 import { 
   successResponse, 
   errorResponse, 
@@ -111,6 +112,40 @@ class MessageController {
 
       if (!receiverId || !content) {
         return res.status(400).json(errorResponse('Receiver ID and content are required', 400));
+      }
+
+      // Validate that receiver exists
+      const receiver = await prisma.user.findUnique({
+        where: { id: parseInt(receiverId) }
+      });
+
+      if (!receiver) {
+        console.error(`Receiver with ID ${receiverId} not found`);
+        return res.status(400).json(errorResponse(`Receiver with ID ${receiverId} not found`, 400));
+      }
+
+      // If message is bound to an appointment, enforce participant and time window
+      if (appointmentId) {
+        const appointment = await prisma.appointment.findUnique({
+          where: { id: parseInt(appointmentId) },
+          include: { doctor: { include: { user: true } }, patient: { include: { user: true } } }
+        });
+        if (!appointment) {
+          return res.status(404).json(notFoundResponse('Appointment not found'));
+        }
+        const doctorUserId = appointment.doctor?.user?.id;
+        const patientUserId = appointment.patient?.user?.id;
+        const isParticipant = parseInt(senderId) === doctorUserId || parseInt(senderId) === patientUserId;
+        if (!isParticipant) {
+          return res.status(403).json(errorResponse('Access denied: not a participant in this appointment', 403));
+        }
+        const now = new Date();
+        const apptDate = new Date(appointment.date);
+        const activeWindowMs = 30 * 60 * 1000;
+        const isWithinWindow = Math.abs(now.getTime() - apptDate.getTime()) <= activeWindowMs;
+        if (!isWithinWindow) {
+          return res.status(403).json(errorResponse('Messaging available only during appointment time window', 403));
+        }
       }
 
       const message = await prisma.message.create({

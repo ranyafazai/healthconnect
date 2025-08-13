@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
-import { connectChat, disconnectChat, fetchConversation, sendTextMessage, fetchAppointmentMessages, clearMessages, joinAppointmentRoom } from '../../Redux/chatSlice/chatSlice';
+import { connectChat, disconnectChat, fetchConversation, sendTextMessage, sendFileMessage, fetchAppointmentMessages, clearMessages, joinAppointmentRoom } from '../../Redux/chatSlice/chatSlice';
 import VideoCall from '../../components/chat/VideoCall';
 import AudioCall from '../../components/chat/AudioCall';
+import IncomingCallPopup from '../../components/chat/IncomingCallPopup';
 import { useConversations } from '../../hooks/useConversations';
 import MessageList from '../../components/chat/MessageList';
 import MessageInput from '../../components/chat/MessageInput';
 import { Phone, Video, MessageSquare, Clock, History, Calendar } from 'lucide-react';
+import { useReviewModalContext } from '../../contexts/ReviewModalContext';
+import TestReviewSystem from '../../components/examples/TestReviewSystem';
+import { getSocket } from '../../lib/socket';
 
 const Messages: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { messages, loadingMessages } = useAppSelector((state: RootState) => state.chat);
+  const { openReviewModal } = useReviewModalContext();
   
   const { 
     conversations, 
@@ -21,6 +26,7 @@ const Messages: React.FC = () => {
     getUpcomingConversations,
     getPastConversations,
     canStartVideoCall,
+    canStartAudioCall,
     markConversationAsRead 
   } = useConversations();
 
@@ -28,7 +34,29 @@ const Messages: React.FC = () => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isAudioCallOpen, setIsAudioCallOpen] = useState(false);
   const [currentAppointmentId, setCurrentAppointmentId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const [isOutgoingAudio, setIsOutgoingAudio] = useState(false);
+  const [isOutgoingVideo, setIsOutgoingVideo] = useState(false);
+  
+  // Incoming call state
+  const [incomingCall, setIncomingCall] = useState<{
+    isOpen: boolean;
+    callerName: string;
+    callType: 'VIDEO' | 'AUDIO';
+    appointmentId: number;
+    callerId: number;
+    conversationId?: number;
+  } | null>(null);
+  
+  // Socket ref for incoming call detection
+  const callSocketRef = useRef<any>(null);
+  
+  // Queue for pending offers that arrive before conversations are loaded
+  const pendingOffersRef = useRef<any[]>([]);
+  
+  // Last incoming offer payload (for answering immediately)
+  const lastIncomingOfferRef = useRef<any>(null);
+  
+  // Removed activeTab state since we're showing all conversations in one list
   
   // Ref for messages container to enable auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,16 +65,32 @@ const Messages: React.FC = () => {
   useEffect(() => {
     if (user?.id) {
       dispatch(connectChat(user.id));
+      setupIncomingCallDetection();
     } else {
       // no user found; skip
     }
 
     // Cleanup: disconnect from chat when component unmounts
     return () => {
-      console.log('🔌 Patient disconnecting from chat');
       dispatch(disconnectChat(user?.id || 0));
+      if (callSocketRef.current) {
+        callSocketRef.current.disconnect();
+      }
     };
   }, [dispatch, user?.id]);
+
+  // Re-setup incoming call detection when conversations are loaded
+  useEffect(() => {
+    if (user?.id && conversations.length > 0) {
+      // Process any pending offers that arrived before conversations were loaded
+      if (pendingOffersRef.current.length > 0) {
+        pendingOffersRef.current.forEach(offerData => {
+          processIncomingOffer(offerData);
+        });
+        pendingOffersRef.current = [];
+      }
+    }
+  }, [conversations, user?.id]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -54,6 +98,121 @@ const Messages: React.FC = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Setup incoming call detection
+  const setupIncomingCallDetection = () => {
+    if (!user?.id) return;
+
+    try {
+      callSocketRef.current = getSocket('/video-call');
+      
+      callSocketRef.current.on('connect', () => {
+        callSocketRef.current?.emit('join-user', user.id);
+      });
+
+      // Listen for incoming call offers
+      callSocketRef.current.on('offer', async (data: any) => {
+        lastIncomingOfferRef.current = data;
+        
+        // If conversations are not loaded yet, queue the offer
+        if (conversations.length === 0) {
+          pendingOffersRef.current.push(data);
+          return;
+        }
+        
+        processIncomingOffer(data);
+      });
+
+      // Caller cancelled before pickup
+      callSocketRef.current.on('call-cancelled', (data: any) => {
+        setIncomingCall(null);
+      });
+
+      // Listen for user-joined-call events (when someone joins a call room)
+      callSocketRef.current.on('user-joined-call', (_data: any) => {});
+
+      callSocketRef.current.on('error', (data: any) => {
+        console.error('❌ Call socket error:', data);
+      });
+
+      // Connect to the socket
+      callSocketRef.current.auth = { userId: user.id };
+      callSocketRef.current.connect();
+
+    } catch (err) {
+      console.error('❌ Failed to setup incoming call detection:', err);
+    }
+  };
+
+  // Process incoming call offer
+  const processIncomingOffer = (data: any) => {
+    // Find the conversation to get caller details
+    const conversation = conversations.find(conv => 
+      conv.otherUserId === data.fromUserId || conv.id === data.fromUserId
+    );
+    
+    if (conversation) {
+      queueMicrotask(() => {
+        setIncomingCall({
+          isOpen: true,
+          callerName: conversation.name,
+          callType: data.callType === 'AUDIO' ? 'AUDIO' : 'VIDEO',
+          appointmentId: conversation.appointmentId || 0,
+          callerId: data.fromUserId,
+          conversationId: conversation.id
+        });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
+    } else {
+      // Try to find by appointment ID if we have it
+      if (data.appointmentId) {
+        const appointmentConversation = conversations.find(conv => conv.appointmentId === data.appointmentId);
+        if (appointmentConversation) {
+          queueMicrotask(() => {
+            setIncomingCall({
+              isOpen: true,
+              callerName: appointmentConversation.name,
+              callType: data.callType === 'AUDIO' ? 'AUDIO' : 'VIDEO',
+              appointmentId: appointmentConversation.appointmentId || 0,
+              callerId: data.fromUserId,
+              conversationId: appointmentConversation.id
+            });
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+          });
+        }
+      }
+    }
+  };
+
+  // Handle incoming call accept
+  const handleAcceptIncomingCall = () => {
+    if (!incomingCall) return;
+    
+    if (incomingCall.callType === 'VIDEO') {
+      setIsVideoCallOpen(true);
+      setCurrentAppointmentId(incomingCall.appointmentId);
+      setSelectedId(incomingCall.conversationId || incomingCall.callerId);
+      setIsOutgoingVideo(false);
+    } else {
+      setIsAudioCallOpen(true);
+      setCurrentAppointmentId(incomingCall.appointmentId);
+      setSelectedId(incomingCall.conversationId || incomingCall.callerId);
+      setIsOutgoingAudio(false);
+    }
+    
+    setIncomingCall(null);
+  };
+
+  // Handle incoming call decline
+  const handleDeclineIncomingCall = () => {
+    // Send decline signal to caller
+    if (callSocketRef.current && incomingCall) {
+      callSocketRef.current.emit('call-declined', {
+        targetUserId: incomingCall.callerId
+      });
+    }
+    setIncomingCall(null);
+  };
 
   const handleSelectConversation = (conversationId: number) => {
     setSelectedId(conversationId);
@@ -79,8 +238,16 @@ const Messages: React.FC = () => {
     }
   };
 
+  // Example function to trigger review modal after consultation ends
+  const handleConsultationEnd = (doctorId: number, doctorName: string, appointmentId: number) => {
+    // This would be called when a consultation ends (video call ends, messaging session ends, etc.)
+    // You can add logic here to check if the patient hasn't already reviewed this appointment
+    openReviewModal(doctorId, doctorName, appointmentId);
+  };
+
   const handleVideoCall = () => {
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
+      setIsOutgoingVideo(true);
       setIsVideoCallOpen(true);
     } else {
       // cannot start
@@ -88,23 +255,15 @@ const Messages: React.FC = () => {
   };
 
   const handleAudioCall = () => {
-    if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
+    if (selectedId && canStartAudioCall(conversations.find(conv => conv.id === selectedId)!)) {
+      setIsOutgoingAudio(true);
       setIsAudioCallOpen(true);
     } else {
-      // cannot start
+      // no-op
     }
   };
 
-  const getFilteredConversations = () => {
-    switch (activeTab) {
-      case 'upcoming':
-        return getUpcomingConversations();
-      case 'past':
-        return getPastConversations();
-      default:
-        return conversations;
-    }
-  };
+  // Removed getFilteredConversations function since we're showing all conversations
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -141,61 +300,28 @@ const Messages: React.FC = () => {
     <div className="flex h-full">
       {/* Conversation List */}
       <div className="w-80 border-r border-gray-200 bg-white">
-        <div className="p-4 border-b border-gray-200">
+                 <div className="p-3 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('upcoming')}
-            className={`flex-1 px-4 py-2 text-sm font-medium ${
-              activeTab === 'upcoming'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Upcoming
-          </button>
-          <button
-            onClick={() => setActiveTab('past')}
-            className={`flex-1 px-4 py-2 text-sm font-medium ${
-              activeTab === 'past'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Past
-          </button>
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 px-4 py-2 text-sm font-medium ${
-              activeTab === 'all'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            All
-          </button>
-        </div>
+                 {/* Removed tabs - showing all conversations in one list */}
 
-        {/* Conversations */}
-        <div className="overflow-y-auto h-96">
-          {loading ? (
-            <div className="p-4 text-center text-gray-500">Loading conversations...</div>
-          ) : error ? (
-            <div className="p-4 text-center text-red-500">{error}</div>
-          ) : getFilteredConversations().length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              {activeTab === 'upcoming' ? 'No upcoming conversations' : 
-               activeTab === 'past' ? 'No past conversations' : 'No conversations'}
-            </div>
-          ) : (
-            getFilteredConversations().map((conversation) => (
+                          {/* Conversations */}
+         <div className="overflow-y-auto h-96">
+           {loading ? (
+             <div className="p-4 text-center text-gray-500">Loading conversations...</div>
+           ) : error ? (
+             <div className="p-4 text-center text-red-500">{error}</div>
+           ) : conversations.length === 0 ? (
+             <div className="p-4 text-center text-gray-500">
+               No conversations found
+             </div>
+           ) : (
+             conversations.map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => handleSelectConversation(conversation.id)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
                   selectedId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
@@ -240,8 +366,8 @@ const Messages: React.FC = () => {
       <div className="flex-1 flex flex-col">
         {selectedId ? (
           <>
-            {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
+                  {/* Chat Header */}
+             <div className="p-3 border-b border-gray-200 bg-white">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
@@ -250,11 +376,7 @@ const Messages: React.FC = () => {
                   <p className="text-sm text-gray-500">
                     {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' 
                       ? 'Appointment Conversation' 
-                      : 'Doctor Conversation'}
-                  </p>
-                  {/* Debug: Message counter */}
-                  <p className="text-xs text-blue-600 mt-1">
-                    Messages: {messages.length} | Connected: {user?.id ? 'Yes' : 'No'}
+                      : 'Patient Conversation'}
                   </p>
                 </div>
                 
@@ -263,12 +385,13 @@ const Messages: React.FC = () => {
                     <>
                       {(() => {
                         const conversation = conversations.find(conv => conv.id === selectedId);
-                        const canCall = conversation && canStartVideoCall(conversation);
+                        const canVideoCall = conversation && canStartVideoCall(conversation);
+                        const canAudioCall = conversation && canStartAudioCall(conversation);
                         return (
                           <>
                             <button
                               onClick={handleAudioCall}
-                              disabled={!canCall}
+                              disabled={!canAudioCall}
                               className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Audio Call"
                             >
@@ -276,7 +399,7 @@ const Messages: React.FC = () => {
                             </button>
                             <button
                               onClick={handleVideoCall}
-                              disabled={!canCall}
+                              disabled={!canVideoCall}
                               className="p-2 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Video Call"
                             >
@@ -291,30 +414,53 @@ const Messages: React.FC = () => {
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto">
-              {loadingMessages ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-500">Loading messages...</div>
-                </div>
-              ) : (
-                <>
-                  <MessageList items={messages} currentUserId={user?.id || 0} />
-                  <div ref={messagesEndRef} /> {/* Scroll anchor */}
-                </>
-              )}
-            </div>
+                                      {/* Messages */}
+             <div className="flex-1 overflow-y-auto">
+               {loadingMessages ? (
+                 <div className="flex items-center justify-center h-full">
+                   <div className="text-gray-500">Loading messages...</div>
+                 </div>
+               ) : (
+                 <>
+                   <MessageList items={messages} currentUserId={user?.id || 0} />
+                   <div ref={messagesEndRef} /> {/* Scroll anchor */}
+                   
+                                      {/* Test Panel - Only show for appointment conversations */}
+                   {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' && (
+                     <div className="p-2">
+                       <TestReviewSystem
+                         appointmentId={currentAppointmentId || 0}
+                         doctorId={conversations.find(conv => conv.id === selectedId)?.otherUserId || 0}
+                         doctorName={conversations.find(conv => conv.id === selectedId)?.name || 'Unknown Doctor'}
+                       />
+                     </div>
+                   )}
+                 </>
+               )}
+             </div>
 
-            {/* Message Input */}
-            <div className="p-4 border-t border-gray-200">
+                         {/* Message Input */}
+             <div className="p-2 border-t border-gray-200">
               <MessageInput 
-                 onSend={(content) => {
+                onSend={(content) => {
                   if (selectedId && currentAppointmentId) {
                     const conversation = conversations.find(conv => conv.id === selectedId);
                     if (conversation) {
                       dispatch(sendTextMessage({
                         receiverId: conversation.otherUserId,
                         content,
+                        appointmentId: currentAppointmentId
+                      }));
+                    }
+                  }
+                }}
+                onSendFile={(file) => {
+                  if (selectedId && currentAppointmentId) {
+                    const conversation = conversations.find(conv => conv.id === selectedId);
+                    if (conversation) {
+                      dispatch(sendFileMessage({
+                        receiverId: conversation.otherUserId,
+                        file,
                         appointmentId: currentAppointmentId
                       }));
                     }
@@ -340,8 +486,10 @@ const Messages: React.FC = () => {
           isOpen={isVideoCallOpen}
           onClose={() => setIsVideoCallOpen(false)}
           appointmentId={currentAppointmentId}
-          otherUserId={selectedId}
+          otherUserId={conversations.find(conv => conv.id === selectedId)?.otherUserId || 0}
           currentUserId={user?.id || 0}
+          isInitiator={isOutgoingVideo}
+          initialOffer={lastIncomingOfferRef.current?.offer || null}
         />
       )}
 
@@ -351,8 +499,22 @@ const Messages: React.FC = () => {
           isOpen={isAudioCallOpen}
           onClose={() => setIsAudioCallOpen(false)}
           appointmentId={currentAppointmentId}
-          otherUserId={selectedId}
+          otherUserId={conversations.find(conv => conv.id === selectedId)?.otherUserId || 0}
           currentUserId={user?.id || 0}
+          isInitiator={isOutgoingAudio}
+          initialOffer={lastIncomingOfferRef.current?.offer || null}
+        />
+      )}
+
+      {/* Incoming Call Popup */}
+      {incomingCall && (
+        <IncomingCallPopup
+          isOpen={incomingCall.isOpen}
+          onAccept={handleAcceptIncomingCall}
+          onDecline={handleDeclineIncomingCall}
+          callerName={incomingCall.callerName}
+          callType={incomingCall.callType}
+          appointmentId={incomingCall.appointmentId}
         />
       )}
     </div>

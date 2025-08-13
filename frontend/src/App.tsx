@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PERMISSIONS } from "./lib/permissions";
+import { ReviewModalProvider } from "./contexts/ReviewModalContext";
+
 
 // Component to handle authentication status checking
 function AuthRedirect() {
@@ -36,13 +38,15 @@ function AuthRedirect() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthRedirect />
-      <Routes>        
+    <ReviewModalProvider>
+      <BrowserRouter>
+        <AuthRedirect />
+        <Routes>        
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
         <Route path="/search" element={<DoctorSearchPage />} />
+
         
         {/* Protected patient routes */}
         <Route 
@@ -87,7 +91,8 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ReviewModalProvider>
   );
 }
 

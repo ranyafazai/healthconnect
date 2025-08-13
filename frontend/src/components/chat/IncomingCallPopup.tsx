@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 // No React default import required
 import { Phone, Video, PhoneOff, PhoneCall } from 'lucide-react';
 
@@ -20,8 +21,8 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  const content = (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
         <div className="text-center">
           {/* Call Icon */}
@@ -67,6 +68,9 @@ const IncomingCallPopup: React.FC<IncomingCallPopupProps> = ({
       </div>
     </div>
   );
+
+  const root = typeof document !== 'undefined' ? document.body : null;
+  return root ? createPortal(content, root) : content;
 };
 
 export default IncomingCallPopup;

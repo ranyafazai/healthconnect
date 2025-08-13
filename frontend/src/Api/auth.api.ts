@@ -12,4 +12,5 @@ export type AuthPayload = {
 
 export const register = (data: AuthPayload) => axios.post("/auth/register", data);
 export const login = (data: AuthPayload) => axios.post("/auth/login", data);
+export const logout = () => axios.post("/auth/logout");
 export const getMe = () => axios.get("/auth/me");

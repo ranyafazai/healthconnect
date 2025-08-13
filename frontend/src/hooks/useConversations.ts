@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAppSelector } from '../Redux/hooks';
+import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import type { RootState } from '../Redux/store';
 import type { Appointment } from '../types/data/appointment';
 
@@ -18,8 +18,10 @@ export interface Conversation {
 }
 
 export function useConversations() {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { appointments } = useAppSelector((state: RootState) => state.appointment);
+  const { messages } = useAppSelector((state: RootState) => state.chat);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,14 +43,17 @@ export function useConversations() {
           // Generate conversations from appointments
           appointments.forEach(appointment => {
             const appointmentDate = new Date(appointment.date);
-            const isUpcoming = appointmentDate > now && appointment.status === 'CONFIRMED';
-            const isPast = appointmentDate < now && appointment.status === 'COMPLETED';
-            const isActive = appointment.status === 'CONFIRMED' && Math.abs(appointmentDate.getTime() - now.getTime()) < 30 * 60 * 1000; // 30 minutes before/after
+            const activeWindowMs = 30 * 60 * 1000; // 30 minutes window around start time
+            const isWithinWindow = Math.abs(appointmentDate.getTime() - now.getTime()) <= activeWindowMs;
 
             let status: 'UPCOMING' | 'PAST' | 'ACTIVE' = 'UPCOMING';
-            if (isPast) status = 'PAST';
-            else if (isActive) status = 'ACTIVE';
-            else if (appointment.status === 'PENDING') status = 'UPCOMING';
+            if (appointment.status === 'COMPLETED' || now.getTime() > appointmentDate.getTime() + activeWindowMs) {
+              status = 'PAST';
+            } else if (appointment.status === 'CONFIRMED' && isWithinWindow) {
+              status = 'ACTIVE';
+            } else {
+              status = 'UPCOMING';
+            }
 
             // Get patient name from appointment data
             let patientName = 'Unknown Patient';
@@ -65,55 +70,35 @@ export function useConversations() {
                          appointment.status === 'PENDING' ? 'Appointment pending' : 
                          appointment.status === 'COMPLETED' ? 'Appointment completed' : 'Appointment status updated',
               unreadCount: 0,
-              otherUserId: appointment.patientId,
+              otherUserId: appointment.patient?.userId || appointment.patientId, // Use patient's userId if available, fallback to patientId
               appointmentId: appointment.id,
-              lastMessageTime: appointment.updatedAt?.toString() || appointment.createdAt?.toString() || new Date().toISOString(),
+              lastMessageTime: appointment.createdAt?.toString() || new Date().toISOString(),
               type: 'APPOINTMENT' as const,
               status,
               appointmentDate: appointment.date.toString(),
               appointmentType: appointment.type
             };
-            
+
             newConversations.push(conversation);
           });
 
-          // Add doctor-to-doctor conversations (mock for now)
-          const doctorConversations: Conversation[] = [
-            {
-              id: 1001,
-              name: 'Dr. Sarah Johnson',
-              lastMessage: 'Can you review this case with me?',
-              unreadCount: 1,
-              otherUserId: 201,
-              type: 'DOCTOR_TO_DOCTOR',
-              status: 'ACTIVE',
-              lastMessageTime: new Date().toISOString()
-            },
-            {
-              id: 1002,
-              name: 'Dr. Michael Chen',
-              lastMessage: 'Great collaboration on the surgery',
-              unreadCount: 0,
-              otherUserId: 202,
-              type: 'DOCTOR_TO_DOCTOR',
-              status: 'PAST',
-              lastMessageTime: new Date(Date.now() - 86400000).toISOString()
-            }
-             ];
-          newConversations.push(...doctorConversations);
+          // Removed doctor-to-doctor conversations - doctors only chat with patients
 
         } else if (user?.role === 'PATIENT') {
           // Generate conversations from patient appointments
           appointments.forEach(appointment => {
             const appointmentDate = new Date(appointment.date);
-            const isUpcoming = appointmentDate > now && appointment.status === 'CONFIRMED';
-            const isPast = appointmentDate < now && appointment.status === 'COMPLETED';
-            const isActive = appointment.status === 'CONFIRMED' && Math.abs(appointmentDate.getTime() - now.getTime()) < 30 * 60 * 1000;
+            const activeWindowMs = 30 * 60 * 1000;
+            const isWithinWindow = Math.abs(appointmentDate.getTime() - now.getTime()) <= activeWindowMs;
 
             let status: 'UPCOMING' | 'PAST' | 'ACTIVE' = 'UPCOMING';
-            if (isPast) status = 'PAST';
-            else if (isActive) status = 'ACTIVE';
-            else if (appointment.status === 'PENDING') status = 'UPCOMING';
+            if (appointment.status === 'COMPLETED' || now.getTime() > appointmentDate.getTime() + activeWindowMs) {
+              status = 'PAST';
+            } else if (appointment.status === 'CONFIRMED' && isWithinWindow) {
+              status = 'ACTIVE';
+            } else {
+              status = 'UPCOMING';
+            }
 
             // Get doctor name from appointment data
             let doctorName = 'Unknown Doctor';
@@ -130,15 +115,15 @@ export function useConversations() {
                          appointment.status === 'PENDING' ? 'Appointment pending' : 
                          appointment.status === 'COMPLETED' ? 'Appointment completed' : 'Appointment status updated',
               unreadCount: 0,
-              otherUserId: appointment.doctorId,
+              otherUserId: appointment.doctor?.userId || appointment.doctorId, // Use doctor's userId if available, fallback to doctorId
               appointmentId: appointment.id,
-              lastMessageTime: appointment.updatedAt?.toString() || appointment.createdAt?.toString() || new Date().toISOString(),
+              lastMessageTime: appointment.createdAt?.toString() || new Date().toISOString(),
               type: 'APPOINTMENT' as const,
               status,
               appointmentDate: appointment.date.toString(),
               appointmentType: appointment.type
             };
-            
+
             newConversations.push(conversation);
           });
         }
@@ -161,6 +146,43 @@ export function useConversations() {
     generateConversationsFromAppointments();
   }, [user?.id, user?.role, appointments]);
 
+  // Update conversations when new messages arrive
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      const conversationId = lastMessage.appointmentId;
+
+      if (conversationId) {
+        setConversations(prev => {
+                     const updated = prev.map(conv => 
+             conv.id === conversationId 
+               ? { 
+                   ...conv, 
+                   lastMessage: lastMessage.content,
+                   lastMessageTime: typeof lastMessage.createdAt === 'string' 
+                     ? lastMessage.createdAt 
+                     : new Date(lastMessage.createdAt).toISOString(),
+                   unreadCount: conv.unreadCount + 1
+                 }
+               : conv
+           );
+
+          // Sort conversations: most recent first, then by status
+          return updated.sort((a, b) => {
+            // First sort by last message time (most recent first)
+            const timeA = new Date(a.lastMessageTime || 0).getTime();
+            const timeB = new Date(b.lastMessageTime || 0).getTime();
+            if (timeA !== timeB) return timeB - timeA;
+            
+            // Then sort by status: ACTIVE first, then UPCOMING, then PAST
+            const statusOrder = { 'ACTIVE': 0, 'UPCOMING': 1, 'PAST': 2 };
+            return statusOrder[a.status] - statusOrder[b.status];
+          });
+        });
+      }
+    }
+  }, [messages]);
+
   const markConversationAsRead = (conversationId: number) => {
     setConversations(prev => 
       prev.map(conv => 
@@ -172,8 +194,8 @@ export function useConversations() {
   };
 
   const updateLastMessage = (conversationId: number, message: string) => {
-    setConversations(prev => 
-      prev.map(conv => 
+    setConversations(prev => {
+      const updated = prev.map(conv => 
         conv.id === conversationId 
           ? { 
               ...conv, 
@@ -182,8 +204,20 @@ export function useConversations() {
               unreadCount: conv.unreadCount + 1
             }
           : conv
-      )
-    );
+      );
+      
+      // Sort conversations: most recent first, then by status
+      return updated.sort((a, b) => {
+        // First sort by last message time (most recent first)
+        const timeA = new Date(a.lastMessageTime || 0).getTime();
+        const timeB = new Date(b.lastMessageTime || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        
+        // Then sort by status: ACTIVE first, then UPCOMING, then PAST
+        const statusOrder = { 'ACTIVE': 0, 'UPCOMING': 1, 'PAST': 2 };
+        return statusOrder[a.status] - statusOrder[b.status];
+      });
+    });
   };
 
   const getUpcomingConversations = () => {
@@ -199,21 +233,28 @@ export function useConversations() {
   };
 
   const canStartVideoCall = (conversation: Conversation) => {
-    if (conversation.type !== 'APPOINTMENT' || !conversation.appointmentDate) {
+    if (conversation.type !== 'APPOINTMENT') {
       return false;
     }
-    
-    // TEMPORARILY DISABLED FOR TESTING - Allow calls at any time
-    // const appointmentDate = new Date(conversation.appointmentDate);
-    // const now = new Date();
-    // const timeDiff = Math.abs(appointmentDate.getTime() - now.getTime());
-    // const minutesDiff = timeDiff / (1000 * 60);
-    
-    // Allow video calls 5 minutes before and 30 minutes after appointment time
-    // return minutesDiff <= 35 && conversation.appointmentType === 'VIDEO';
-    
-    // For testing: Allow all video calls regardless of time
-    return conversation.appointmentType === 'VIDEO';
+
+    if (conversation.appointmentType !== 'VIDEO') return false;
+    if (!conversation.appointmentDate) return false;
+    const apptDate = new Date(conversation.appointmentDate);
+    const activeWindowMs = 30 * 60 * 1000;
+    return Math.abs(new Date().getTime() - apptDate.getTime()) <= activeWindowMs;
+  };
+
+  const canStartAudioCall = (conversation: Conversation) => {
+    if (conversation.type !== 'APPOINTMENT') {
+      return false;
+    }
+
+    // Audio calls are only allowed for VIDEO-type appointments within the active window
+    if (conversation.appointmentType !== 'VIDEO') return false;
+    if (!conversation.appointmentDate) return false;
+    const apptDate = new Date(conversation.appointmentDate);
+    const activeWindowMs = 30 * 60 * 1000;
+    return Math.abs(new Date().getTime() - apptDate.getTime()) <= activeWindowMs;
   };
 
   return {
@@ -225,6 +266,7 @@ export function useConversations() {
     getUpcomingConversations,
     getPastConversations,
     getActiveConversations,
-    canStartVideoCall
+    canStartVideoCall,
+    canStartAudioCall
   };
 }
