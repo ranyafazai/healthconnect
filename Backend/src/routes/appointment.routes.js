@@ -17,6 +17,9 @@ router.get('/doctor/:doctorId', authMiddleware, appointmentController.getAppoint
 // Get appointments by patient ID (GET) - Must come before /:id
 router.get('/patient/:patientId', authMiddleware, appointmentController.getAppointmentsByPatient);
 
+// Get past consultations with enhanced details (GET) - Must come before /:id
+router.get('/past-consultations/:patientId', authMiddleware, appointmentController.getPastConsultations);
+
 // Get appointment by ID (GET) - Must come last
 router.get('/:id', authMiddleware, appointmentController.getAppointmentById);
 
