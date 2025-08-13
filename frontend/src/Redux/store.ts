@@ -35,6 +35,9 @@ export const store = configureStore({
 // Debug logs removed for production readiness
 
 // Subscribe to store changes and save auth state to localStorage
+// Only save when auth state actually changes to prevent excessive localStorage operations
+let previousAuthState: string | null = null;
+
 store.subscribe(() => {
   const state = store.getState();
   saveStateToStorage(state.auth);

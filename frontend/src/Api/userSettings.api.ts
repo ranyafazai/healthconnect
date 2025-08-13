@@ -27,9 +27,25 @@ export interface UserSettings {
   loginNotifications: boolean;
 }
 
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export const getUserSettings = () => 
   axios.get<{ data: UserSettings }>('/user-settings');
 
 export const updateUserSettings = (data: Partial<UserSettings>) => 
   axios.put<{ data: UserSettings }>('/user-settings', data);
+
+// Account management APIs
+export const changePassword = (data: ChangePasswordData) => 
+  axios.put<{ message: string }>('/auth/change-password', data);
+
+export const exportUserData = () => 
+  axios.get('/user/export-data', { responseType: 'blob' });
+
+export const deleteAccount = (password: string) => 
+  axios.delete<{ message: string }>('/user/delete-account', { data: { password } });
 

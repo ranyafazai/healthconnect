@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
@@ -20,8 +21,14 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 function AuthRedirect() {
   const { isAuthenticated, loading } = useAppSelector((state: RootState) => state.auth);
   const dispatch = useAppDispatch();
+  const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
+    // Only run this effect once
+    if (hasCheckedAuth.current) {
+      return;
+    }
+
     // Clear any stale authentication state on app startup
     const clearStaleAuth = () => {
       const authState = localStorage.getItem('authState');
@@ -42,11 +49,13 @@ function AuthRedirect() {
     clearStaleAuth();
     
     // Check authentication status only once when component mounts
-    // and only if we don't have authentication data
+    // and only if we don't have authentication data but have a token
     const token = localStorage.getItem('token');
     if (!isAuthenticated && !loading && token) {
       dispatch(checkAuthStatus());
     }
+    
+    hasCheckedAuth.current = true;
   }, []); // Empty dependency array to run only once
 
   // Don't render anything while checking authentication
@@ -58,6 +67,8 @@ function AuthRedirect() {
 }
 
 function App() {
+  console.log('App component rendered at:', new Date().toISOString());
+  
   return (
     <BrowserRouter>
       <AuthRedirect />

@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, logout, me } from '../controllers/auth.controller.js';
+import { register, login, logout, me, changePassword } from '../controllers/auth.controller.js';
 import { body } from 'express-validator';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
@@ -29,5 +29,16 @@ router.post(
 
 router.post('/logout', authMiddleware, logout);
 router.get('/me', authMiddleware, me);
+
+router.put(
+  '/change-password',
+  authMiddleware,
+  [
+    body('currentPassword').isLength({ min: 6 }),
+    body('newPassword').isLength({ min: 6 }),
+    body('confirmPassword').isLength({ min: 6 }),
+  ],
+  changePassword
+);
 
 export default router;

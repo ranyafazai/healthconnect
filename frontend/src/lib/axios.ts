@@ -11,7 +11,8 @@ const instance = axios.create({
 // Request interceptor for adding auth token
 instance.interceptors.request.use(
   (config) => {
-    // You can add auth token here if needed
+    // For cookie-based auth, we don't need to manually add the token
+    // The cookie will be sent automatically with withCredentials: true
     return config;
   },
   (error) => {

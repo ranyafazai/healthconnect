@@ -3,7 +3,7 @@ import responseFormatter from '../utils/responseFormatter.js';
 
 const prisma = new PrismaClient();
 
- const getUserSettings = async (req, res) => {
+const getUserSettings = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -32,7 +32,7 @@ const prisma = new PrismaClient();
   }
 };
 
- const updateUserSettings = async (req, res) => {
+const updateUserSettings = async (req, res) => {
   try {
     const userId = req.user.id;
     const {

@@ -94,14 +94,23 @@ export const checkAuthStatus = createAsyncThunk(
 );
 
 // Save state to localStorage whenever it changes
+let saveTimeout: NodeJS.Timeout | null = null;
+
 export const saveStateToStorage = (state: LocalAuthState) => {
   try {
-    const stateWithTimestamp = {
-      ...state,
-      timestamp: Date.now()
-    };
-    const serializedState = JSON.stringify(stateWithTimestamp);
-    localStorage.setItem('authState', serializedState);
+    // Debounce localStorage writes to prevent excessive operations
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    saveTimeout = setTimeout(() => {
+      const stateWithTimestamp = {
+        ...state,
+        timestamp: Date.now()
+      };
+      const serializedState = JSON.stringify(stateWithTimestamp);
+      localStorage.setItem('authState', serializedState);
+    }, 100); // Debounce for 100ms
   } catch (err) {
     // Ignore write errors
   }
