@@ -16,6 +16,7 @@ import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { PERMISSIONS } from "./lib/permissions";
 
+
 // Component to handle authentication status checking
 function AuthRedirect() {
   const { isAuthenticated, loading } = useAppSelector((state: RootState) => state.auth);
@@ -68,7 +69,7 @@ function App() {
         <Route path="/search" element={<DoctorSearchPage />} />
         <Route path="/learn-more" element={<LearnMorePage />} />
         <Route path="/how-to-book" element={<HowToBookPage />} />
-        
+
         {/* Protected patient routes */}
         <Route 
           path="/patient/*" 
