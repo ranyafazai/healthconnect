@@ -94,6 +94,11 @@ export const getAppointmentsByPatient = (patientId: number, page = 1, limit = 50
       throw err;
     });
 };
+export const getPastConsultations = (patientId: number, status?: string, limit?: number, offset?: number) => 
+  axios.get<{ data: { data: UIConsultation[] } }>(`/appointments/past-consultations/${patientId}`, {
+    params: { status, limit, offset }
+  });
+
 
 
 export const getPastConsultations = (patientId: number, status?: string, limit?: number, offset?: number) => 

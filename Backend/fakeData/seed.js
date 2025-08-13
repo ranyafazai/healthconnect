@@ -661,6 +661,7 @@ async function main() {
       });
     }
 
+
     console.log('✅ Database seeding completed successfully!');
     console.log(`\n📊 Summary of created data:`);
     console.log(`👨‍⚕️  Doctors: ${doctors.length}`);

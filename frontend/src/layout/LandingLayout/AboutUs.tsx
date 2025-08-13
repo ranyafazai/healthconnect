@@ -1,3 +1,4 @@
+import { Button } from '../../components/ui/button';
 
 import { 
   Phone, 
@@ -424,15 +425,36 @@ export function AboutUs() {
                     placeholder="Tell us more about your inquiry..."
                   ></textarea>
                 </div>
-                <button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-3 rounded-lg font-semibold">
+                <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-3 rounded-lg">
                   Send Message
-                </button>
+                </Button>
+
               </form>
             </div>
           </div>
         </div>
       </div>
 
+      {/* CTA Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="bg-gradient-to-r from-[#008CBA] to-[#007A9A] rounded-2xl text-center p-12">
+          <h2 className="text-3xl font-bold text-white mb-6">
+            Join the Healthcare Revolution
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            Be part of the future of healthcare. Whether you're a patient seeking care or a doctor wanting to expand your practice, 
+            HealthConnect is here to help.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button className="bg-white text-[#008CBA] hover:bg-gray-100 px-8 py-3 rounded-full text-lg font-semibold">
+              Get Started Today
+            </Button>
+            <Button variant="outline" className="border-white text-white hover:bg-white hover:text-[#008CBA] px-8 py-3 rounded-full text-lg font-semibold">
+              Learn More
+            </Button>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

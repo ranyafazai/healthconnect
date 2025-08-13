@@ -16,7 +16,6 @@ import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 
-
 // Component to handle authentication status checking
 function AuthRedirect() {
   const { isAuthenticated, loading } = useAppSelector((state: RootState) => state.auth);
