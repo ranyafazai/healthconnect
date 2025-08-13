@@ -11,22 +11,20 @@ import {
   Star, 
   Clock, 
   Sparkles, 
-  ChevronDown,
-  Filter,
-  X
+  ChevronDown
 } from 'lucide-react';
 import type { DoctorProfile } from '../types/data/doctor';
 import { getUploadedFileUrl } from '../utils/fileUrl';
 
 export default function DoctorSearchPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
   const { searchResults, searchLoading, filters, sortBy } = useAppSelector((state: RootState) => state.doctor);
   const { isAuthenticated } = useAppSelector((state: RootState) => state.auth);
   
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters] = useState(false);
   const [localFilters, setLocalFilters] = useState(filters);
 
   const query = searchParams.get('q') || '';
@@ -34,17 +32,21 @@ export default function DoctorSearchPage() {
   // Specialty options
   const specialties = [
     'All Specialties',
-    'Cardiologist',
-    'Dermatologist',
-    'Endocrinologist',
-    'Gynecologist',
-    'Neurologist',
-    'Oncologist',
-    'Orthopedist',
-    'Pediatrician',
-    'Psychiatrist',
-    'Radiologist',
-    'Surgeon'
+    'Cardiology',
+    'Family Medicine',
+    'Dermatology',
+    'Neurology',
+    'Pediatrics',
+    'Oncology',
+    'Psychiatry',
+    'Orthopedics',
+    'Endocrinology',
+    'Gastroenterology',
+    'Ophthalmology',
+    'Urology',
+    'Gynecology',
+    'Pulmonology',
+    'Rheumatology'
   ];
 
   // City options
@@ -95,14 +97,18 @@ export default function DoctorSearchPage() {
 
   // Initialize search on component mount
   useEffect(() => {
-    dispatch(searchDoctors({ 
+    const searchParams = { 
       query,
       specialty: filters.specialty,
       city: filters.city,
       minRating: filters.minRating,
       availability: filters.availability,
       sortBy
-    }));
+    };
+    
+
+    
+    dispatch(searchDoctors(searchParams));
   }, [query, filters, sortBy, dispatch]);
 
   const handleFilterChange = (filterType: keyof typeof filters, value: string) => {

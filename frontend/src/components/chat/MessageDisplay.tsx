@@ -11,7 +11,8 @@ interface Props {
   isOwnMessage: boolean;
 }
 
-const MessageDisplay: React.FC<Props> = ({ message, currentUser, isOwnMessage }) => {
+const MessageDisplay: React.FC<Props> = ({ message, currentUser: _currentUser, isOwnMessage }) => {
+  void _currentUser;
   // Fetch file data if we have fileId but no file object
   const { file: fetchedFile, loading: fileLoading, error: fileError } = useFileData(
     message.fileId && !message.file ? message.fileId : undefined

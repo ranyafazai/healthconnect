@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
 import type { RootState } from "./Redux/store";
@@ -14,7 +14,6 @@ import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { PERMISSIONS } from "./lib/permissions";
 import { ReviewModalProvider } from "./contexts/ReviewModalContext";
 
 
@@ -22,12 +21,41 @@ import { ReviewModalProvider } from "./contexts/ReviewModalContext";
 function AuthRedirect() {
   const { isAuthenticated, loading } = useAppSelector((state: RootState) => state.auth);
   const dispatch = useAppDispatch();
+  const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
-    // On app mount, rely on httpOnly cookie and ask backend for user
-    if (!isAuthenticated && !loading) {
+    // Only run this effect once
+    if (hasCheckedAuth.current) {
+      return;
+    }
+
+    // Clear any stale authentication state on app startup
+    const clearStaleAuth = () => {
+      const authState = localStorage.getItem('authState');
+      if (authState) {
+        try {
+          const parsed = JSON.parse(authState);
+          // If the stored state is older than 24 hours, clear it
+          if (parsed.timestamp && Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
+            localStorage.removeItem('authState');
+            return;
+          }
+        } catch (error) {
+          localStorage.removeItem('authState');
+        }
+      }
+    };
+
+    clearStaleAuth();
+    
+    // Check authentication status only once when component mounts
+    // and only if we don't have authentication data but have a token
+    const token = localStorage.getItem('token');
+    if (!isAuthenticated && !loading && token) {
       dispatch(checkAuthStatus());
     }
+    
+    hasCheckedAuth.current = true;
   }, []); // Empty dependency array to run only once
 
   // Don't render anything while checking authentication
@@ -47,6 +75,8 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<LandingPage />} />
+        <Route path="/about" element={<LandingPage />} />
         <Route path="/search" element={<DoctorSearchPage />} />
         <Route path="/learn-more" element={<LearnMorePage />} />
         <Route path="/how-to-book" element={<HowToBookPage />} />

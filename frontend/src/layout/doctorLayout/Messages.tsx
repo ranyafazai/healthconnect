@@ -9,22 +9,19 @@ import { useConversations } from '../../hooks/useConversations';
 import MessageList from '../../components/chat/MessageList';
 import MessageInput from '../../components/chat/MessageInput';
 import { Phone, Video, MessageSquare, Clock, History, Calendar } from 'lucide-react';
-import { useReviewModalContext } from '../../contexts/ReviewModalContext';
-import TestReviewSystem from '../../components/examples/TestReviewSystem';
+// import { useReviewModalContext } from '../../contexts/ReviewModalContext';
 import { getSocket } from '../../lib/socket';
 
 const Messages: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { messages, loadingMessages } = useAppSelector((state: RootState) => state.chat);
-  const { openReviewModal } = useReviewModalContext();
+  // const { openReviewModal } = useReviewModalContext();
   
   const { 
     conversations, 
     loading, 
     error,
-    getUpcomingConversations,
-    getPastConversations,
     canStartVideoCall,
     canStartAudioCall,
     markConversationAsRead 

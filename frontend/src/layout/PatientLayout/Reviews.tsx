@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchPatientReviews, deleteReview } from '../../Redux/reviewSlice/reviewSlice';
-import { Star, Edit, Trash2 } from 'lucide-react';
-import type { Review } from '../../types/data/review';
+import { Star, Trash2 } from 'lucide-react';
 
 const Reviews: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -15,9 +14,9 @@ const Reviews: React.FC = () => {
     }
   }, [dispatch, user?.patientProfile?.id]);
 
-  const handleDeleteReview = async (reviewId: number) => {
+  const handleDeleteReview = async (reviewId: string | number) => {
     if (window.confirm('Are you sure you want to delete this review?')) {
-      await dispatch(deleteReview(reviewId)).unwrap();
+      await dispatch(deleteReview(Number(reviewId))).unwrap();
     }
   };
 

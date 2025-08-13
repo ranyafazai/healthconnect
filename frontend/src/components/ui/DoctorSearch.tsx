@@ -18,7 +18,7 @@ export default function DoctorSearch({
 }: DoctorSearchProps) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { searchResults, searchLoading, searchQuery } = useAppSelector((state: RootState) => state.doctor);
+  const { searchResults, searchLoading } = useAppSelector((state: RootState) => state.doctor);
   
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');

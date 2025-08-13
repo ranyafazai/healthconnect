@@ -9,22 +9,21 @@ import { useConversations } from '../../hooks/useConversations';
 import MessageList from '../../components/chat/MessageList';
 import MessageInput from '../../components/chat/MessageInput';
 import { Phone, Video, MessageSquare, Clock, History, Calendar } from 'lucide-react';
-import { useReviewModalContext } from '../../contexts/ReviewModalContext';
-import TestReviewSystem from '../../components/examples/TestReviewSystem';
+// import { useReviewModalContext } from '../../contexts/ReviewModalContext';
 import { getSocket } from '../../lib/socket';
 
 const Messages: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { messages, loadingMessages } = useAppSelector((state: RootState) => state.chat);
-  const { openReviewModal } = useReviewModalContext();
+  // const { openReviewModal } = useReviewModalContext();
   
   const { 
     conversations, 
     loading, 
     error,
-    getUpcomingConversations,
-    getPastConversations,
+    
+    
     canStartVideoCall,
     canStartAudioCall,
     markConversationAsRead 
@@ -124,7 +123,7 @@ const Messages: React.FC = () => {
       });
 
       // Caller cancelled before pickup
-      callSocketRef.current.on('call-cancelled', (data: any) => {
+      callSocketRef.current.on('call-cancelled', () => {
         setIncomingCall(null);
       });
 
@@ -239,11 +238,7 @@ const Messages: React.FC = () => {
   };
 
   // Example function to trigger review modal after consultation ends
-  const handleConsultationEnd = (doctorId: number, doctorName: string, appointmentId: number) => {
-    // This would be called when a consultation ends (video call ends, messaging session ends, etc.)
-    // You can add logic here to check if the patient hasn't already reviewed this appointment
-    openReviewModal(doctorId, doctorName, appointmentId);
-  };
+  // Removed unused handleConsultationEnd
 
   const handleVideoCall = () => {
     if (selectedId && canStartVideoCall(conversations.find(conv => conv.id === selectedId)!)) {
@@ -425,16 +420,7 @@ const Messages: React.FC = () => {
                    <MessageList items={messages} currentUserId={user?.id || 0} />
                    <div ref={messagesEndRef} /> {/* Scroll anchor */}
                    
-                                      {/* Test Panel - Only show for appointment conversations */}
-                   {conversations.find(conv => conv.id === selectedId)?.type === 'APPOINTMENT' && (
-                     <div className="p-2">
-                       <TestReviewSystem
-                         appointmentId={currentAppointmentId || 0}
-                         doctorId={conversations.find(conv => conv.id === selectedId)?.otherUserId || 0}
-                         doctorName={conversations.find(conv => conv.id === selectedId)?.name || 'Unknown Doctor'}
-                       />
-                     </div>
-                   )}
+                  
                  </>
                )}
              </div>

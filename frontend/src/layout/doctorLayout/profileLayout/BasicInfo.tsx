@@ -27,8 +27,8 @@ export default function BasicInfo() {
       setLastName(profile.doctorProfile?.lastName || "");
       setBio(profile.doctorProfile?.professionalBio || "");
       if (profile.files && profile.files.length > 0) {
-        const photoFile = profile.files.find(file => file.type === 'PHOTO');
-        if (photoFile) {
+        const photoFile = profile.files.find(file => file.type === 'PROFILE_PICTURE');
+        if (photoFile && photoFile.url) {
           setPhoto(photoFile.url);
         }
       }
@@ -56,12 +56,11 @@ export default function BasicInfo() {
     setIsSubmitting(true);
     try {
       const updateData = {
-        doctorProfile: {
-          firstName,
-          lastName,
-          professionalBio: bio,
-        }
-      };
+        // Narrow update to fields the backend expects and accepts on partial update
+        firstName,
+        lastName,
+        professionalBio: bio,
+      } as any;
       
       await dispatch(updateUserProfile(updateData)).unwrap();
       // Refresh profile data

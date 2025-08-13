@@ -4,7 +4,7 @@ import type { RootState } from "../../Redux/store";
 import { logoutUser } from "../../Redux/authSlice/authSlice";
 import { clearProfile } from "../../Redux/userSlice/userSlice";
 import { clearPatient } from "../../Redux/patientSlice/patientSlice";
-import { clearMessages, disconnectChat } from "../../Redux/chatSlice/chatSlice";
+import { clearMessages } from "../../Redux/chatSlice/chatSlice";
 import { clearNotifications } from "../../Redux/notificationSlice/notificationSlice";
 import { disconnectAllSockets } from "../../lib/socket";
 import {
@@ -12,13 +12,13 @@ import {
   MessageSquare,
   User,
   LogOut,
-  Grid,
+  
   Settings,
-  File,
+  
   Star,
   Home,
   Clock,
-  Bell,
+  
 } from "lucide-react";
 
 export default function Sidebar() {

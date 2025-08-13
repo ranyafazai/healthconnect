@@ -67,7 +67,7 @@ export const createReview = createAsyncThunk(
       appointmentId?: number;
     }
   ) => {
-    const created = await reviewApi.createReview(reviewData);
+    const created = await reviewApi.createReview(reviewData as any);
     return created;
   }
 );

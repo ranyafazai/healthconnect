@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import type { FormEvent, DragEvent, ChangeEvent } from 'react';
-import { validateFile, getFileType, formatFileSize, getFileIcon as getFileIconUtil } from '../../utils/fileUpload';
+import { validateFile, getFileType, formatFileSize } from '../../utils/fileUpload';
 
 type Props = {
   onSend: (content: string) => void;

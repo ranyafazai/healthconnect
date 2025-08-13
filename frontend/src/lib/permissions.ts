@@ -123,7 +123,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     {
       resource: 'medical_records',
       actions: [PERMISSIONS.READ_PATIENT_MEDICAL_RECORDS],
-      conditions: (user, resourceId) => {
+      conditions: (_user, _resourceId) => {
         // Doctors can only read medical records of patients they have appointments with
         // This would need to be checked against appointment data
         return true; // Simplified for now
@@ -217,9 +217,7 @@ export const hasPermission = (
   
   const rolePermissions = ROLE_PERMISSIONS[user.role as UserRole];
   if (!rolePermissions) return false;
-  
-  
-  
+
   // Check if user has the specific permission
   for (const perm of rolePermissions) {
     if (perm.resource === '*' || perm.resource === resource) {
@@ -243,7 +241,6 @@ export const hasPermission = (
       }
     }
   }
-  
   
   return false;
 };

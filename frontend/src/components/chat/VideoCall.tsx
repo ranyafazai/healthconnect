@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Phone, Video, Mic, MicOff, VideoOff, Monitor, MonitorOff, PhoneOff, Settings } from 'lucide-react';
+import { Video, Mic, MicOff, VideoOff, Monitor, MonitorOff, PhoneOff, Settings } from 'lucide-react';
 import { getSocket } from '../../lib/socket';
 
 interface VideoCallProps {
@@ -27,7 +27,9 @@ export default function VideoCall({
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  // Recording state reserved for future feature
   const [isRecording, setIsRecording] = useState(false);
+  void isRecording;
   const [callDuration, setCallDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -220,14 +222,14 @@ export default function VideoCall({
         handleEndCall();
       });
 
-      socketRef.current.on('call-declined', (data: any) => {
+      socketRef.current.on('call-declined', () => {
         setError('Call was declined by the other user.');
         setTimeout(() => {
           handleEndCall();
         }, 2000);
       });
 
-      socketRef.current.on('call-cancelled', (data: any) => {
+      socketRef.current.on('call-cancelled', () => {
         setError('Caller cancelled the call.');
         setTimeout(() => handleEndCall(), 1000);
       });
@@ -242,21 +244,7 @@ export default function VideoCall({
     }
   };
 
-  const createOffer = async () => {
-    if (peerConnectionRef.current) {
-      try {
-        const offer = await peerConnectionRef.current.createOffer();
-        await peerConnectionRef.current.setLocalDescription(offer);
-        
-        socketRef.current?.emit('offer', {
-          targetUserId: otherUserId,
-          offer
-        });
-      } catch (err) {
-        console.error('Failed to create offer:', err);
-      }
-    }
-  };
+  // createOffer function not used currently
 
   const toggleMute = () => {
     if (localStreamRef.current) {

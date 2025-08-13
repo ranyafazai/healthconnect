@@ -4,7 +4,7 @@ import FullLine from './FullLine';
 import DoctorCard from './DoctorCard';
 import { BookingSummary } from './BookingSummary';
 import type { DoctorProfile } from '../../../types/data/doctor';
-import type { ConsultationType } from '../../../types/data/appointment';
+// import type { ConsultationType } from '../../../types/data/appointment';
 
 interface ConsultationTypeProps {
   onNext: () => void;

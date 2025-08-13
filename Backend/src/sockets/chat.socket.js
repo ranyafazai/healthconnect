@@ -16,7 +16,7 @@ export default function registerChatSocket(io) {
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
       try {
-        // Set userId if not already set (for development/testing)
+        // Set userId if not already set
         if (!socket.userId) {
           socket.userId = parseInt(userId);
           logger.info(`Setting socket userId to ${userId}`);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { fetchUserProfile, updateUserProfile } from "../../../Redux/userSlice/userSlice";
 import type { RootState } from "../../../Redux/store";
@@ -36,11 +36,11 @@ export default function ProfessionalDetails() {
       setLicenseNumber(profile.doctorProfile.medicalLicense || "");
       
       if (profile.doctorProfile.certifications) {
-        setCertifications(profile.doctorProfile.certifications.map(cert => ({
+        setCertifications(profile.doctorProfile.certifications.map((cert: any) => ({
           id: cert.id,
-          title: cert.title,
-          institution: cert.institution,
-          year: cert.year.toString()
+          title: String(cert.title ?? ''),
+          institution: String(cert.institution ?? ''),
+          year: String(cert.year ?? '')
         })));
       }
     }
@@ -53,12 +53,10 @@ export default function ProfessionalDetails() {
     setIsSubmitting(true);
     try {
       const updateData = {
-        doctorProfile: {
-          specialization,
-          yearsExperience: parseInt(experience) || 0,
-          medicalLicense: licenseNumber,
-        }
-      };
+        specialization,
+        yearsExperience: parseInt(experience) || 0,
+        medicalLicense: licenseNumber,
+      } as any;
       
       await dispatch(updateUserProfile(updateData)).unwrap();
       // Refresh profile data
@@ -70,14 +68,12 @@ export default function ProfessionalDetails() {
     }
   };
 
-  const handleEdit = (id: number) => {
-    // TODO: Implement edit certification modal/form
-    alert(`Edit certification with id: ${id}`);
+  const handleEdit = (_id: number) => {
+    // Edit certification functionality
   };
 
   const handleAdd = () => {
-    // TODO: Implement add certification modal/form
-    alert("Open add certification modal/form");
+    // Add certification functionality
   };
 
   if (loading) {

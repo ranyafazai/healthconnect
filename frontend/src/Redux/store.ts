@@ -32,7 +32,7 @@ export const store = configureStore({
     }),
 });
 
-// Debug logs removed for production readiness
+
 
 // No localStorage persistence: backend cookie is source of truth
 

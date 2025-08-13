@@ -138,9 +138,7 @@ export const validateEnv = () => {
     }
   }
   
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('✅ Environment configuration validated');
-  }
+
 };
 
 export default config;

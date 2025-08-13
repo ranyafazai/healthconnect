@@ -3,10 +3,10 @@ import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 import type { RootState } from "../../Redux/store";
 import { logoutUser } from "../../Redux/authSlice/authSlice";
 import { clearProfile } from "../../Redux/userSlice/userSlice";
-import { clearMessages, disconnectChat } from "../../Redux/chatSlice/chatSlice";
+import { clearMessages } from "../../Redux/chatSlice/chatSlice";
 import { clearNotifications } from "../../Redux/notificationSlice/notificationSlice";
 import { disconnectAllSockets } from "../../lib/socket";
-import { Calendar, MessageSquare, Star, User, LogOut, Grid, Home, Stethoscope, Bell } from "lucide-react";
+import { Calendar, MessageSquare, Star, User, LogOut, Home } from "lucide-react";
 import { useEffect } from "react";
 import { fetchDoctorDashboard } from "../../Redux/doctorSlice/doctorSlice";
 

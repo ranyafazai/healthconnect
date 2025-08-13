@@ -18,6 +18,10 @@ router.post('/upload-photo', authMiddleware, (req, res, next) => {
   next();
 }, upload.single('photo'), userController.uploadProfilePhoto);
 
+// Account management routes
+router.get('/export-data', authMiddleware, userController.exportUserData);
+router.delete('/delete-account', authMiddleware, userController.deleteAccount);
+
 // Get user by ID - Must come last
 router.get('/:id', authMiddleware, userController.getUserById);
 

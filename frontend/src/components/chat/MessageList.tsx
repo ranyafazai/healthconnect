@@ -10,7 +10,7 @@ type Props = {
 
 export default function MessageList({ items, currentUserId }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const currentUser = useAppSelector(state => state.auth.user);
+  const currentUser = useAppSelector(state => state.auth.user as any);
   
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;

@@ -3,18 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../Redux/hooks';
 import type { RootState } from '../Redux/store';
 import { getDoctorById } from '../Redux/doctorSlice/doctorSlice';
-import { useAppSelector as useAuthSelector } from '../Redux/hooks';
 import { Navbar } from '../components/NavBar/NavBar';
 import { 
   Star, 
   MapPin, 
   Clock, 
-  Calendar, 
   User, 
   Award,
   Phone,
   Mail,
-  MessageSquare,
   ChevronLeft
 } from 'lucide-react';
 import type { DoctorProfile } from '../types/data/doctor';
@@ -500,12 +497,10 @@ export default function DoctorProfilePage() {
                               {Array.isArray(dayAvailability) ? (
                                 dayAvailability.map((timeSlot, index) => (
                                   <div key={index} className="text-sm">
-                                    {timeSlot}
+                                    {String(timeSlot)}
                                   </div>
                                 ))
-                              ) : (
-                                <span>{dayAvailability}</span>
-                              )}
+                              ) : null}
                             </div>
                           ) : (
                             <span className="text-red-500">Closed</span>

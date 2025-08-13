@@ -97,24 +97,7 @@ function App() {
   }, [bookingData]);
 
   // Helper reserved for future validation of steps
-  const canProceedToNextStep = () => {
-    switch (currentStep) {
-      case 1: // DateTime
-        return bookingData.date && bookingData.time;
-      case 2: // ConsultationType
-        return bookingData.consultationType;
-      case 3: // PatientInfo
-        return (
-          bookingData.patientInfo.fullName &&
-          bookingData.patientInfo.email &&
-          bookingData.patientInfo.phone &&
-          bookingData.patientInfo.reasonForVisit &&
-          bookingData.patientInfo.agreeToTerms
-        );
-      default:
-        return true;
-    }
-  };
+  // canProceedToNextStep reserved for future validation logic
 
   const renderCurrentStep = () => {
     const doctor = doctors.find(d => d.id === parseInt(doctorId || '0'));

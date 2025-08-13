@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch } from "../../../Redux/hooks";
 import { createAppointment, fetchAppointmentsByPatient } from "../../../Redux/appointmentSlice/appointmentSlice";
 import DoctorCard from "./DoctorCard";
 import FullLine from "./FullLine";
-import { BookingSummary } from "./BookingSummary";
+// import { BookingSummary } from "./BookingSummary";
 import type { DoctorProfile } from '../../../types/data/doctor';
 
 interface ConfirmationProps {
@@ -46,7 +46,7 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     apt.type === bookingData.consultationType
   );
 
-  // Debug logs removed
+
 
   // Monitor if appointment was created in Redux store
   useEffect(() => {

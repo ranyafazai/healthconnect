@@ -313,9 +313,8 @@ const chatSlice = createSlice({
       
       
     },
-    updateConversationLastMessage(state, action: PayloadAction<{ conversationId: number; message: string; timestamp: string }>) {
-      // This will be used by the useConversations hook to update conversation list
-      // The actual conversation update is handled in the useConversations hook
+    updateConversationLastMessage(_state, _action: PayloadAction<{ conversationId: number; message: string; timestamp: string }>) {
+      // Handled in UI hook
     },
     clearMessages(state) {
       state.messages = [];

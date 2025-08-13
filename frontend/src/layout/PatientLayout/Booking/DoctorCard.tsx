@@ -1,5 +1,5 @@
 // No React import needed
-import { Star } from "lucide-react";
+// import { Star } from "lucide-react";
 import type { DoctorProfile } from '../../../types/data/doctor';
 
 interface DoctorCardProps {

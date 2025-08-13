@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useReviewModal } from '../hooks/useReviewModal';
 
 interface ReviewModalContextType {
@@ -15,11 +15,11 @@ interface ReviewModalContextType {
 const ReviewModalContext = createContext<ReviewModalContextType | undefined>(undefined);
 
 interface ReviewModalProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const ReviewModalProvider: React.FC<ReviewModalProviderProps> = ({ children }) => {
-  const { modalState, openReviewModal, closeReviewModal, handleReviewSubmitted } = useReviewModal();
+  const { modalState, openReviewModal, closeReviewModal } = useReviewModal();
 
   return (
     <ReviewModalContext.Provider

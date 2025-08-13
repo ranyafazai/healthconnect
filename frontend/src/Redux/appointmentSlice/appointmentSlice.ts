@@ -126,7 +126,7 @@ const appointmentSlice = createSlice({
       })
       .addCase(fetchAppointments.fulfilled, (state, action) => {
         state.loading = false;
-        state.appointments = action.payload?.data || [];
+        state.appointments = (action.payload?.data as any)?.data || action.payload?.data || [];
       })
       .addCase(fetchAppointments.rejected, (state, action) => {
         state.loading = false;
@@ -139,11 +139,12 @@ const appointmentSlice = createSlice({
       })
       .addCase(fetchAppointmentsByDoctor.fulfilled, (state, action) => {
         state.loading = false;
-        state.appointments = action.payload?.data || [];
-        if (action.payload?.pagination) {
-          state.page = action.payload.pagination.page;
-          state.limit = action.payload.pagination.limit;
-          state.total = action.payload.pagination.total;
+        const payload: any = action.payload;
+        state.appointments = payload?.data?.data || payload?.data || [];
+        if (payload?.pagination) {
+          state.page = payload.pagination.page;
+          state.limit = payload.pagination.limit;
+          state.total = payload.pagination.total;
         }
       })
       .addCase(fetchAppointmentsByDoctor.rejected, (state, action) => {
@@ -157,11 +158,12 @@ const appointmentSlice = createSlice({
       })
       .addCase(fetchAppointmentsByPatient.fulfilled, (state, action) => {
         state.loading = false;
-        state.appointments = action.payload?.data || [];
-        if (action.payload?.pagination) {
-          state.page = action.payload.pagination.page;
-          state.limit = action.payload.pagination.limit;
-          state.total = action.payload.pagination.total;
+        const payload: any = action.payload;
+        state.appointments = payload?.data?.data || payload?.data || [];
+        if (payload?.pagination) {
+          state.page = payload.pagination.page;
+          state.limit = payload.pagination.limit;
+          state.total = payload.pagination.total;
         }
       })
       .addCase(fetchAppointmentsByPatient.rejected, (state, action) => {

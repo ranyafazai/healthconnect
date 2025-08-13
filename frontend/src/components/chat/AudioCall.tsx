@@ -151,7 +151,7 @@ export default function AudioCall({
         socketRef.current?.emit('join-call', { appointmentId, roomId });
       });
 
-      socketRef.current.on('call-cancelled', (data: any) => {
+      socketRef.current.on('call-cancelled', () => {
         setError('Caller cancelled the call.');
         setTimeout(() => handleEndCall(), 1000);
       });
@@ -182,7 +182,7 @@ export default function AudioCall({
         }
       });
 
-      socketRef.current.on('user-joined-call', (_data: any) => {});
+      socketRef.current.on('user-joined-call', () => {});
 
       socketRef.current.on('offer', async (data: any) => {
         if (peerConnectionRef.current) {
@@ -225,7 +225,7 @@ export default function AudioCall({
         handleEndCall();
       });
 
-      socketRef.current.on('call-declined', (data: any) => {
+      socketRef.current.on('call-declined', () => {
         setError('Call was declined by the other user.');
         setTimeout(() => {
           handleEndCall();

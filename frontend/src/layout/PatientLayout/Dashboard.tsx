@@ -24,7 +24,7 @@ export default function Dashboard() {
   const { appointments, loading: appointmentsLoading } = useAppSelector((state: RootState) => state.appointment);
   const { messages, loadingMessages: messagesLoading } = useAppSelector((state: RootState) => state.chat);
 
-  // Debug logs removed
+
 
   // Redirect if not authenticated
   useEffect(() => {

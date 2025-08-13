@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useAppSelector, useAppDispatch } from '../Redux/hooks';
+import { useAppSelector } from '../Redux/hooks';
 import type { RootState } from '../Redux/store';
-import type { Appointment } from '../types/data/appointment';
 
 export interface Conversation {
   id: number;
@@ -18,7 +17,6 @@ export interface Conversation {
 }
 
 export function useConversations() {
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { appointments } = useAppSelector((state: RootState) => state.appointment);
   const { messages } = useAppSelector((state: RootState) => state.chat);
