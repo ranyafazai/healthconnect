@@ -1,8 +1,10 @@
 import React from "react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { useNavigate } from "react-router-dom";
 
 export function Hero() {
+  const navigate = useNavigate();
   return (
     <div className="w-full bg-blue-50">
       <section className="w-full flex flex-col md:flex-row items-center justify-between p-8 px-8 bg-blue-50">
@@ -15,10 +17,10 @@ export function Hero() {
             Book virtual appointments with certified doctors from the comfort of your home. Quality healthcare is now just a click away.
           </p>
           <div className="flex gap-4 mb-6">
-            <Button className="text-white font-bold shadow-md rounded-full px-8 py-3 hover:opacity-90 transition-all duration-200" style={{ backgroundColor: '#008CBA' }}>
+            <Button onClick={() => navigate('/how-to-book')} className="text-white font-bold shadow-md rounded-full px-8 py-3 hover:opacity-90 transition-all duration-200" style={{ backgroundColor: '#008CBA' }}>
               Book Appointment
             </Button>
-            <Button variant="outline" className="bg-white font-bold shadow-md rounded-full px-8 py-3 hover:bg-gray-50 transition-all duration-200" style={{ borderColor: '#008CBA', color: '#008CBA' }}>
+            <Button onClick={() => navigate('/learn-more')} variant="outline" className="bg-white font-bold shadow-md rounded-full px-8 py-3 hover:bg-gray-50 transition-all duration-200" style={{ borderColor: '#008CBA', color: '#008CBA' }}>
               Learn More
             </Button>
           </div>

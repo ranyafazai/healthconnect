@@ -1,16 +1,72 @@
 import { Server as SocketIOServer } from "socket.io";
+import jwt from 'jsonwebtoken';
 
 let io;
 
 export default {
   initSocket: (server) => {
+    const defaultAllowedOrigins = [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      'http://localhost:3000'
+    ];
+    const envOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultAllowedOrigins]));
+
     io = new SocketIOServer(server, {
       cors: {
-        origin: "*", // Change to frontend domain in production
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          if (allowedOrigins.includes(origin)) return callback(null, true);
+          return callback(new Error('Socket CORS: Origin not allowed'));
+        },
         methods: ["GET", "POST"],
+        credentials: true,
       },
+      connectionStateRecovery: { maxDisconnectionDuration: 2 * 60 * 1000 },
     });
     console.log("✅ Socket.io initialized");
+
+    // Global middleware for JWT auth + memory leak prevention
+    io.use((socket, next) => {
+      try {
+        let token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '') || null;
+        // Try to parse httpOnly cookie header if present
+        if (!token && socket.handshake.headers?.cookie) {
+          const cookieHeader = socket.handshake.headers.cookie;
+          const parts = cookieHeader.split(';').map((c) => c.trim());
+          const tokenCookie = parts.find((p) => p.startsWith('token='));
+          if (tokenCookie) {
+            token = decodeURIComponent(tokenCookie.split('=')[1]);
+          }
+        }
+        if (!token) return next(new Error('Unauthorized: missing token'));
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-change-me');
+        socket.userId = payload.id;
+        return next();
+      } catch (err) {
+        return next(new Error('Unauthorized: invalid token'));
+      }
+    });
+
+    io.on('connection', (socket) => {
+      // Defensive cleanup to avoid leaks
+      const cleanup = () => {
+        try {
+          socket.removeAllListeners();
+          socket.rooms.forEach((room) => {
+            if (room !== socket.id) socket.leave(room);
+          });
+        } catch {}
+      };
+      socket.on('disconnect', cleanup);
+      socket.on('error', cleanup);
+    });
     return io;
   },
   getIO: () => {

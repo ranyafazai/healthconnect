@@ -1,7 +1,9 @@
-import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Message, MessageType } from '../../types/data/message';
-import { getConversation as apiGetConversation, sendMessage as apiSendMessage } from '../../Api/message.api';
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { getSocket } from '../../lib/socket';
+import { getConversation, sendMessage, getAppointmentMessages } from '../../Api/message.api';
+import axios from '../../lib/axios';
+import type { Message, MessageType } from '../../types/data/message';
+import type { RootState } from '../store';
 
 export type ConversationLite = {
   id: number;
@@ -16,57 +18,146 @@ type ChatState = {
   selectedId: number | null;
   messages: Message[];
   loadingMessages: boolean;
+  unreadCount?: number;
 };
 
 const initialState: ChatState = {
   isConnected: false,
   connecting: false,
-  conversations: [
-    { id: 2, name: 'Emma Thompson', lastMessage: 'Last visit: 2 weeks ago' },
-  ],
-  selectedId: 2,
+  conversations: [],
+  selectedId: null,
   messages: [],
   loadingMessages: false,
+  unreadCount: 0,
 };
 
-// Module-level socket (avoid storing non-serializable in Redux state)
-let chatSocket: ReturnType<typeof getSocket> | null = null;
+// Module-level socket map (avoid storing non-serializable in Redux state)
+const chatSockets: Map<number, ReturnType<typeof getSocket>> = new Map();
+
+// Function to join appointment room
+export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
+  
+  
+  const chatSocket = chatSockets.get(userId);
+  if (chatSocket && chatSocket.connected) {
+    
+    chatSocket.emit('join-appointment', appointmentId);
+    console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
+  } else {
+    
+  }
+};
 
 export const connectChat = createAsyncThunk(
   'chat/connect',
   async (currentUserId: number, { dispatch }) => {
-    if (chatSocket) return;
-    chatSocket = getSocket('/chat');
+  
+    
+    // Check if user already has a socket connection
+    if (chatSockets.has(currentUserId)) {
+      const existingSocket = chatSockets.get(currentUserId);
+      if (existingSocket && existingSocket.connected) {
+        
+        return;
+      } else {
+        
+        chatSockets.delete(currentUserId);
+      }
+    }
+    
+    
+    const chatSocket = getSocket('/chat');
+    
+    // Log socket state
+    
+    
+    chatSockets.set(currentUserId, chatSocket);
 
-    chatSocket.on('connect', () => {
-      dispatch(setIsConnected(true));
-      chatSocket?.emit('join-user', currentUserId);
-    });
-
+    // Bind socket events before connecting
     const onNewMessage = (msg: Message) => {
-      dispatch(addMessage(msg));
+      
+      
+      // Only add the message if it's intended for this user
+      if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
+        
+        dispatch(addMessage(msg));
+        
+      } else {
+        
+      }
     };
 
+    const onMessageSent = (msg: Message) => {
+      
+      
+      // Only add the message if it's intended for this user
+      if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
+        
+        dispatch(addMessage(msg));
+        
+      } else {
+        
+      }
+    };
+
+    const onJoined = (data: { userId: number; role: string }) => {};
+
+    const onAppointmentJoined = (data: { appointmentId: number }) => {};
+
+    // Bind all events
+    chatSocket.on('joined', onJoined);
+    chatSocket.on('appointment-joined', onAppointmentJoined);
     chatSocket.on('new-message', onNewMessage);
-    chatSocket.on('message-sent', onNewMessage);
+    chatSocket.on('message-sent', onMessageSent);
+
+    chatSocket.on('connect', () => {
+      
+      dispatch(setIsConnected(true));
+      chatSocket.emit('join-user', currentUserId);
+      // Fetch unread count upon connect
+      try { axios.get('/messages/unread/count').then(r => dispatch(setUnreadCount(r.data?.data?.count || 0))); } catch {}
+    });
 
     chatSocket.on('disconnect', () => {
+      
       dispatch(setIsConnected(false));
     });
+
+    chatSocket.on('error', (error) => {
+      console.error('❌ Chat socket error for user', currentUserId, ':', error);
+    });
+
+    // If socket is already connected, emit join-user immediately
+    if (chatSocket.connected) {
+      
+      chatSocket.emit('join-user', currentUserId);
+    } else {
+      
+    }
   }
 );
 
-export const disconnectChat = createAsyncThunk('chat/disconnect', async () => {
+export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId: number) => {
+  const chatSocket = chatSockets.get(userId);
   if (chatSocket) {
+  
     chatSocket.disconnect();
-    chatSocket = null;
+    chatSockets.delete(userId);
   }
 });
 
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
   async (otherUserId: number) => {
-    const res = await apiGetConversation(otherUserId);
+    const res = await getConversation(otherUserId);
+    return res.data?.data ?? [];
+  }
+);
+
+export const fetchAppointmentMessages = createAsyncThunk(
+  'chat/fetchAppointmentMessages',
+  async (appointmentId: number) => {
+    const res = await getAppointmentMessages(appointmentId);
     return res.data?.data ?? [];
   }
 );
@@ -77,10 +168,10 @@ export const sendTextMessage = createAsyncThunk(
     payload: { receiverId: number; content: string; appointmentId?: number | null; type?: MessageType },
     { getState, dispatch }
   ) => {
-    await apiSendMessage({ ...payload, type: payload.type ?? 'TEXT' });
+    await sendMessage({ ...payload, type: payload.type ?? 'TEXT' });
     // Optimistic UI update handled by component previously; here we'll let socket echo back
     // For immediate feel, dispatch optional optimistic message if needed
-    const state = getState() as any;
+    const state = getState() as RootState;
     const currentUserId = state?.auth?.user?.id as number | undefined;
     if (currentUserId) {
       const optimistic: Message = {
@@ -110,10 +201,28 @@ const chatSlice = createSlice({
       state.messages = [];
     },
     addMessage(state, action: PayloadAction<Message>) {
-      state.messages.push(action.payload);
+      // Check if message already exists to avoid duplicates
+      const existingMessageIndex = state.messages.findIndex(msg => msg.id === action.payload.id);
+      
+      if (existingMessageIndex !== -1) {
+        // Update existing message (for optimistic updates)
+        state.messages[existingMessageIndex] = action.payload;
+      } else {
+        // Add new message
+        state.messages.push(action.payload);
+      }
+      
+      // Sort messages by creation time (newest at the bottom for chat UI)
+      state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    },
+    clearMessages(state) {
+      state.messages = [];
     },
     setConversations(state, action: PayloadAction<ConversationLite[]>) {
       state.conversations = action.payload;
+    },
+    setUnreadCount(state, action: PayloadAction<number>) {
+      state.unreadCount = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -127,13 +236,23 @@ const chatSlice = createSlice({
       })
       .addCase(fetchConversation.rejected, (state) => {
         state.loadingMessages = false;
+      })
+      .addCase(fetchAppointmentMessages.pending, (state) => {
+        state.loadingMessages = true;
+      })
+      .addCase(fetchAppointmentMessages.fulfilled, (state, action) => {
+        state.loadingMessages = false;
+        state.messages = action.payload;
+      })
+      .addCase(fetchAppointmentMessages.rejected, (state) => {
+        state.loadingMessages = false;
       });
   },
 });
 
-export const { setIsConnected, selectConversation, addMessage, setConversations } = chatSlice.actions;
+export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations } = chatSlice.actions;
 
-export const selectChat = (state: any) => state.chat as ChatState;
+export const selectChat = (state: RootState) => state.chat as ChatState;
 
 export default chatSlice.reducer;
 

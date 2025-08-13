@@ -7,9 +7,21 @@ export default function registerVideoCallSocket(io) {
   videoCallNamespace.on('connection', (socket) => {
     logger.info(`Video call socket connected: ${socket.id}`);
 
+    // Ensure user identity is present from auth middleware
+    if (!socket.userId) {
+      logger.warn('Video socket missing userId from auth middleware, disconnecting');
+      socket.disconnect(true);
+      return;
+    }
+
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
       try {
+        // Prevent users from joining rooms other than their own
+        if (parseInt(userId) !== socket.userId) {
+          socket.emit('error', { message: 'Access denied' });
+          return;
+        }
         const user = await prisma.user.findUnique({
           where: { id: parseInt(userId) },
           include: {
@@ -23,7 +35,6 @@ export default function registerVideoCallSocket(io) {
           return;
         }
 
-        socket.userId = user.id;
         socket.userRole = user.role;
         socket.join(`user-${user.id}`);
         
@@ -38,6 +49,12 @@ export default function registerVideoCallSocket(io) {
     // Create or join video call room
     socket.on('join-call', async (data) => {
       try {
+        // Check if user has already joined a user room
+        if (!socket.userId) {
+          socket.emit('error', { message: 'Please join a user room first' });
+          return;
+        }
+
         const { appointmentId, roomId } = data;
 
         const appointment = await prisma.appointment.findUnique({
@@ -53,11 +70,25 @@ export default function registerVideoCallSocket(io) {
           return;
         }
 
-        // Check if user is part of this appointment
+        // Check if user is part of this appointment by comparing user IDs
+        // appointment.doctor.user.id and appointment.patient.user.id are the actual user IDs
+        
+        // Debug logging to understand the data structure
+        logger.info(`Video call appointment data for ${appointmentId}:`, {
+          appointmentId: appointment.id,
+          doctorProfileId: appointment.doctorId,
+          patientProfileId: appointment.patientId,
+          doctorUserId: appointment.doctor?.user?.id,
+          patientUserId: appointment.patient?.user?.id,
+          socketUserId: socket.userId
+        });
+        
         if (
-          socket.userId !== appointment.doctor.userId &&
-          socket.userId !== appointment.patient.userId
+          socket.userId !== appointment.doctor.user.id &&
+          socket.userId !== appointment.patient.user.id
         ) {
+          logger.error(`Access denied for user ${socket.userId} to video call appointment ${appointmentId}`);
+          logger.error(`Expected: doctor.user.id=${appointment.doctor.user.id} or patient.user.id=${appointment.patient.user.id}`);
           socket.emit('error', { message: 'Access denied' });
           return;
         }
@@ -307,9 +338,10 @@ export default function registerVideoCallSocket(io) {
       }
     });
 
-    // Handle disconnection
+    // Handle disconnection with cleanup
     socket.on('disconnect', async () => {
       try {
+        try { socket.removeAllListeners(); } catch {}
         if (socket.roomId) {
           // Notify other participants
           socket.to(`call-${socket.roomId}`).emit('user-disconnected', {

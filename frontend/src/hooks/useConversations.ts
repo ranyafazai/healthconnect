@@ -42,25 +42,33 @@ export function useConversations() {
           // Generate conversations from appointments
           appointments.forEach(appointment => {
             const appointmentDate = new Date(appointment.date);
-            const isUpcoming = appointmentDate > now;
+            const isUpcoming = appointmentDate > now && appointment.status === 'CONFIRMED';
             const isPast = appointmentDate < now && appointment.status === 'COMPLETED';
             const isActive = appointment.status === 'CONFIRMED' && Math.abs(appointmentDate.getTime() - now.getTime()) < 30 * 60 * 1000; // 30 minutes before/after
 
             let status: 'UPCOMING' | 'PAST' | 'ACTIVE' = 'UPCOMING';
             if (isPast) status = 'PAST';
             else if (isActive) status = 'ACTIVE';
+            else if (appointment.status === 'PENDING') status = 'UPCOMING';
 
             // Get patient name from appointment data
-            const patientName = `Patient #${appointment.patientId}`; // In real app, fetch patient details
+            let patientName = 'Unknown Patient';
+            if (appointment.patient && appointment.patient.firstName && appointment.patient.lastName) {
+              patientName = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
+            } else if (appointment.patientId) {
+              patientName = `Patient #${appointment.patientId}`;
+            }
             
             const conversation = {
               id: appointment.id,
               name: patientName,
-              lastMessage: appointment.status === 'CONFIRMED' ? 'Appointment confirmed' : 'Appointment pending',
+              lastMessage: appointment.status === 'CONFIRMED' ? 'Appointment confirmed' : 
+                         appointment.status === 'PENDING' ? 'Appointment pending' : 
+                         appointment.status === 'COMPLETED' ? 'Appointment completed' : 'Appointment status updated',
               unreadCount: 0,
               otherUserId: appointment.patientId,
               appointmentId: appointment.id,
-              lastMessageTime: appointment.createdAt?.toString() || new Date().toISOString(),
+              lastMessageTime: appointment.updatedAt?.toString() || appointment.createdAt?.toString() || new Date().toISOString(),
               type: 'APPOINTMENT' as const,
               status,
               appointmentDate: appointment.date.toString(),
@@ -100,25 +108,33 @@ export function useConversations() {
           // Generate conversations from patient appointments
           appointments.forEach(appointment => {
             const appointmentDate = new Date(appointment.date);
-            const isUpcoming = appointmentDate > now;
+            const isUpcoming = appointmentDate > now && appointment.status === 'CONFIRMED';
             const isPast = appointmentDate < now && appointment.status === 'COMPLETED';
             const isActive = appointment.status === 'CONFIRMED' && Math.abs(appointmentDate.getTime() - now.getTime()) < 30 * 60 * 1000;
 
             let status: 'UPCOMING' | 'PAST' | 'ACTIVE' = 'UPCOMING';
             if (isPast) status = 'PAST';
             else if (isActive) status = 'ACTIVE';
+            else if (appointment.status === 'PENDING') status = 'UPCOMING';
 
             // Get doctor name from appointment data
-            const doctorName = `Dr. #${appointment.doctorId}`; // In real app, fetch doctor details
+            let doctorName = 'Unknown Doctor';
+            if (appointment.doctor && appointment.doctor.firstName && appointment.doctor.lastName) {
+              doctorName = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`;
+            } else if (appointment.doctorId) {
+              doctorName = `Dr. #${appointment.doctorId}`;
+            }
             
             const conversation = {
               id: appointment.id,
               name: doctorName,
-              lastMessage: appointment.status === 'CONFIRMED' ? 'Appointment confirmed' : 'Appointment pending',
+              lastMessage: appointment.status === 'CONFIRMED' ? 'Appointment confirmed' : 
+                         appointment.status === 'PENDING' ? 'Appointment pending' : 
+                         appointment.status === 'COMPLETED' ? 'Appointment completed' : 'Appointment status updated',
               unreadCount: 0,
               otherUserId: appointment.doctorId,
               appointmentId: appointment.id,
-              lastMessageTime: appointment.createdAt?.toString() || new Date().toISOString(),
+              lastMessageTime: appointment.updatedAt?.toString() || appointment.createdAt?.toString() || new Date().toISOString(),
               type: 'APPOINTMENT' as const,
               status,
               appointmentDate: appointment.date.toString(),
