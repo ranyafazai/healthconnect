@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
 import type { RootState } from "./Redux/store";
 import { checkAuthStatus } from "./Redux/authSlice/authSlice";
@@ -8,11 +9,13 @@ import DoctorPage from "./pages/DoctorPage";
 import LandingPage from "./pages/LandingPage";
 import DoctorSearchPage from "./pages/DoctorSearchPage";
 import DoctorProfilePage from "./pages/DoctorProfilePage";
+import LearnMorePage from "./pages/LearnMorePage";
+import HowToBookPage from "./pages/HowToBookPage";
 import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { PERMISSIONS } from "./lib/permissions";
+
 
 // Component to handle authentication status checking
 function AuthRedirect() {
@@ -73,8 +76,12 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<LandingPage />} />
+        <Route path="/about" element={<LandingPage />} />
         <Route path="/search" element={<DoctorSearchPage />} />
-        
+        <Route path="/learn-more" element={<LearnMorePage />} />
+        <Route path="/how-to-book" element={<HowToBookPage />} />
+
         {/* Protected patient routes */}
         <Route 
           path="/patient/*" 
