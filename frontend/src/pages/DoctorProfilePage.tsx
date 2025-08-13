@@ -128,11 +128,9 @@ export default function DoctorProfilePage() {
 
   const handleBookAppointment = () => {
     if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      navigate('/auth/signin');
+      navigate('/how-to-book');
       return;
     }
-    // Navigate to booking process
     navigate(`/patient/booking?doctorId=${id}`);
   };
 

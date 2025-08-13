@@ -8,6 +8,8 @@ import DoctorPage from "./pages/DoctorPage";
 import LandingPage from "./pages/LandingPage";
 import DoctorSearchPage from "./pages/DoctorSearchPage";
 import DoctorProfilePage from "./pages/DoctorProfilePage";
+import LearnMorePage from "./pages/LearnMorePage";
+import HowToBookPage from "./pages/HowToBookPage";
 import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
@@ -46,8 +48,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
         <Route path="/search" element={<DoctorSearchPage />} />
+        <Route path="/learn-more" element={<LearnMorePage />} />
+        <Route path="/how-to-book" element={<HowToBookPage />} />
 
-        
         {/* Protected patient routes */}
         <Route 
           path="/patient/*" 
