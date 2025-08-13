@@ -665,13 +665,7 @@ async function main() {
     console.log(`\n📊 Summary of created data:`);
     console.log(`👨‍⚕️  Doctors: ${doctors.length}`);
     console.log(`👥 Patients: ${patients.length}`);
-<<<<<<< HEAD
-    console.log(`📅 Appointments: 100`);
-    console.log(`⭐ Reviews: 25`);
-=======
-    console.log(`📅 Appointments: 43 (35 general + 8 past consultations for PatientTest)`);
-    console.log(`⭐ Reviews: 25+ (including PatientTest reviews)`);
->>>>>>> 8521d298b33dfa89ca049cb8808c00952cfd44ff
+
     console.log(`📋 Medical Records: ${patients.length * 2} (average)`);
     console.log(`💬 Messages: 50+ (including PatientTest consultation messages)`);
     console.log(`🔔 Notifications: ${(doctors.length + patients.length) * 3} (average)`);
