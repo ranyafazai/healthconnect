@@ -22,12 +22,17 @@ const Messages: React.FC = () => {
     conversations, 
     loading, 
     error,
-    
-    
+    getUpcomingConversations,
+    getPastConversations,
+    getActiveConversations,
     canStartVideoCall,
     canStartAudioCall,
     markConversationAsRead 
   } = useConversations();
+
+  // Keep a ref of latest conversations to avoid stale closures in socket handlers
+  const conversationsRef = useRef(conversations);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -35,6 +40,7 @@ const Messages: React.FC = () => {
   const [currentAppointmentId, setCurrentAppointmentId] = useState<number | null>(null);
   const [isOutgoingAudio, setIsOutgoingAudio] = useState(false);
   const [isOutgoingVideo, setIsOutgoingVideo] = useState(false);
+  const [convTab, setConvTab] = useState<'ACTIVE' | 'UPCOMING' | 'PAST'>('ACTIVE');
   
   // Incoming call state
   const [incomingCall, setIncomingCall] = useState<{
@@ -114,7 +120,7 @@ const Messages: React.FC = () => {
         lastIncomingOfferRef.current = data;
         
         // If conversations are not loaded yet, queue the offer
-        if (conversations.length === 0) {
+        if (!conversationsRef.current || conversationsRef.current.length === 0) {
           pendingOffersRef.current.push(data);
           return;
         }
@@ -145,13 +151,18 @@ const Messages: React.FC = () => {
 
   // Process incoming call offer
   const processIncomingOffer = (data: any) => {
-    // Find the conversation to get caller details
-    const conversation = conversations.find(conv => 
-      conv.otherUserId === data.fromUserId || conv.id === data.fromUserId
-    );
-    
+    // Prefer matching by appointmentId when present
+    const list = conversationsRef.current || [];
+    let conversation = undefined as any;
+    if (data.appointmentId) {
+      conversation = list.find((conv: any) => conv.appointmentId === data.appointmentId);
+    }
+    if (!conversation) {
+      conversation = list.find((conv: any) => conv.otherUserId === data.fromUserId || conv.id === data.fromUserId);
+    }
+
     if (conversation) {
-      queueMicrotask(() => {
+      setTimeout(() => {
         setIncomingCall({
           isOpen: true,
           callerName: conversation.name,
@@ -160,26 +171,7 @@ const Messages: React.FC = () => {
           callerId: data.fromUserId,
           conversationId: conversation.id
         });
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      });
-    } else {
-      // Try to find by appointment ID if we have it
-      if (data.appointmentId) {
-        const appointmentConversation = conversations.find(conv => conv.appointmentId === data.appointmentId);
-        if (appointmentConversation) {
-          queueMicrotask(() => {
-            setIncomingCall({
-              isOpen: true,
-              callerName: appointmentConversation.name,
-              callType: data.callType === 'AUDIO' ? 'AUDIO' : 'VIDEO',
-              appointmentId: appointmentConversation.appointmentId || 0,
-              callerId: data.fromUserId,
-              conversationId: appointmentConversation.id
-            });
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-          });
-        }
-      }
+      }, 0);
     }
   };
 
@@ -214,6 +206,7 @@ const Messages: React.FC = () => {
   };
 
   const handleSelectConversation = (conversationId: number) => {
+    console.log('Selecting conversation:', conversationId);
     setSelectedId(conversationId);
     markConversationAsRead(conversationId);
     
@@ -222,8 +215,10 @@ const Messages: React.FC = () => {
     
     // Find the conversation to get appointment details
     const conversation = conversations.find(conv => conv.id === conversationId);
+    console.log('Found conversation:', conversation);
     
     if (conversation?.appointmentId) {
+      console.log('Fetching appointment messages for:', conversation.appointmentId);
       setCurrentAppointmentId(conversation.appointmentId);
       
       // Join appointment room for real-time messaging
@@ -232,6 +227,7 @@ const Messages: React.FC = () => {
       // Fetch messages for this appointment
       dispatch(fetchAppointmentMessages(conversation.appointmentId));
     } else if (conversation?.otherUserId) {
+      console.log('Fetching conversation with user:', conversation.otherUserId);
       // For non-appointment conversations, fetch by user ID
       dispatch(fetchConversation(conversation.otherUserId));
     }
@@ -292,73 +288,94 @@ const Messages: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-h-0">
       {/* Conversation List */}
       <div className="w-80 border-r border-gray-200 bg-white">
                  <div className="p-3 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
         </div>
 
-                 {/* Removed tabs - showing all conversations in one list */}
+                  {/* Tabs */}
+         <div className="px-3 pt-3">
+           <div className="flex gap-2">
+             {(['ACTIVE','UPCOMING','PAST'] as const).map((key) => (
+               <button
+                 key={key}
+                 onClick={() => setConvTab(key)}
+                 className={`px-3 py-1 rounded-full text-sm font-medium ${convTab === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+               >
+                 {key === 'ACTIVE' ? 'Active' : key === 'UPCOMING' ? 'Upcoming' : 'Past'}
+               </button>
+             ))}
+           </div>
+         </div>
 
-                          {/* Conversations */}
+                           {/* Conversations */}
          <div className="overflow-y-auto h-96">
            {loading ? (
              <div className="p-4 text-center text-gray-500">Loading conversations...</div>
            ) : error ? (
              <div className="p-4 text-center text-red-500">{error}</div>
-           ) : conversations.length === 0 ? (
-             <div className="p-4 text-center text-gray-500">
-               No conversations found
-             </div>
            ) : (
-             conversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                onClick={() => handleSelectConversation(conversation.id)}
-                                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                  selectedId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {getTypeIcon(conversation.type, conversation.appointmentType)}
-                    <span className="font-medium text-gray-900">{conversation.name}</span>
-                  </div>
-                  {conversation.unreadCount > 0 && (
-                    <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
-                      {conversation.unreadCount}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600 truncate">
-                    {conversation.lastMessage || 'No messages yet'}
-                  </span>
-                  {conversation.lastMessageTime && (
-                    <span className="text-xs text-gray-400">
-                      {new Date(conversation.lastMessageTime).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  {getStatusBadge(conversation.status)}
-                  {conversation.appointmentDate && (
-                    <span className="text-xs text-gray-500">
-                      {new Date(conversation.appointmentDate).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+             (() => {
+               const timeOf = (c: any) => new Date(c.lastMessageTime || c.appointmentDate || 0).getTime();
+               const sortByTimeDesc = (arr: any[]) => [...arr].sort((a, b) => timeOf(b) - timeOf(a));
+               const list = convTab === 'ACTIVE'
+                 ? sortByTimeDesc(getActiveConversations())
+                 : convTab === 'UPCOMING'
+                 ? sortByTimeDesc(getUpcomingConversations())
+                 : sortByTimeDesc(getPastConversations());
+               if (list.length === 0) {
+                 return <div className="p-4 text-center text-gray-500">No conversations found</div>;
+               }
+               return (
+                 <div>
+                   {list.map((conversation: any) => (
+                     <div
+                       key={conversation.id}
+                       onClick={() => handleSelectConversation(conversation.id)}
+                       className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${selectedId === conversation.id ? 'bg-blue-50 border-blue-200' : ''}`}
+                     >
+                       <div className="flex items-start justify-between mb-2">
+                         <div className="flex items-center gap-2">
+                           {getTypeIcon(conversation.type, conversation.appointmentType)}
+                           <span className="font-medium text-gray-900">{conversation.name}</span>
+                         </div>
+                         {conversation.unreadCount > 0 && (
+                           <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
+                             {conversation.unreadCount}
+                           </span>
+                         )}
+                       </div>
+                       <div className="flex items-center justify-between mb-2">
+                         <span className="text-sm text-gray-600 truncate">
+                           {conversation.lastMessage || 'No messages yet'}
+                         </span>
+                         {(conversation.lastMessageTime || conversation.appointmentDate) && (
+                           <span className="text-xs text-gray-400">
+                             {new Date(conversation.lastMessageTime || conversation.appointmentDate).toLocaleDateString()}
+                           </span>
+                         )}
+                       </div>
+                       <div className="flex items-center justify-between">
+                         {getStatusBadge(conversation.status)}
+                         {conversation.appointmentDate && (
+                           <span className="text-xs text-gray-500">
+                             {new Date(conversation.appointmentDate).toLocaleDateString()}
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               );
+             })()
+           )}
+         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {selectedId ? (
           <>
                   {/* Chat Header */}

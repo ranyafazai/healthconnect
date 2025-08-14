@@ -4,7 +4,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   fileResponse,
   listResponse,
   paginatedResponse,
@@ -64,6 +63,30 @@ class FileController {
           fileType
         }
       });
+
+      // If this upload is a profile picture, automatically link it to profile
+      if (fileType === 'PROFILE_PICTURE') {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: parseInt(ownerId) },
+            include: { doctorProfile: true, patientProfile: true }
+          });
+          if (user?.doctorProfile?.id) {
+            await prisma.doctorProfile.update({
+              where: { id: user.doctorProfile.id },
+              data: { photoId: file.id }
+            });
+          }
+          if (user?.patientProfile?.id) {
+            await prisma.patientProfile.update({
+              where: { id: user.patientProfile.id },
+              data: { photoId: file.id }
+            });
+          }
+        } catch (e) {
+          console.error('Auto-link profile picture error:', e);
+        }
+      }
 
       return res.status(201).json(fileResponse(file));
     } catch (error) {

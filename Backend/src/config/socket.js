@@ -81,7 +81,9 @@ export default {
           socket.rooms.forEach((room) => {
             if (room !== socket.id) socket.leave(room);
           });
-        } catch {}
+        } catch (_err) {
+          return; // ignore cleanup errors
+        }
       };
       socket.on('disconnect', cleanup);
       socket.on('error', cleanup);

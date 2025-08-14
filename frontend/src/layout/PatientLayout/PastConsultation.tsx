@@ -4,10 +4,12 @@ import { Calendar, Clock, User, FileText, Star, MessageSquare, ChevronDown, Chev
 import { getPastConsultations } from '../../Api/appointment.api';
  
 import { useReviewModalContext } from '../../contexts/ReviewModalContext';
+import { getFileUrl } from '../../utils/fileUrl';
 
 type FilterStatus = 'ALL' | 'COMPLETED' | 'CANCELLED';
 
 interface UIConsultation {
+  doctorId: number;
   id: number;
   doctorName: string;
   doctorSpecialization: string;
@@ -310,7 +312,7 @@ export default function PastConsultation() {
                   <div className="flex items-center gap-3">
                     {consultation.doctorImage ? (
                       <img
-                        src={consultation.doctorImage}
+                        src={getFileUrl(consultation.doctorImage)}
                         alt={consultation.doctorName}
                         className="w-12 h-12 rounded-full object-cover"
                       />
@@ -364,7 +366,7 @@ export default function PastConsultation() {
                   <button 
                     onClick={() => {
                       const doctorName = consultation.doctorName || 'Unknown Doctor';
-                      const doctorId = consultation.id || 0;
+                      const doctorId = consultation.doctorId || 0;
                       const appointmentId = consultation.id || 0;
                       openReviewModal(doctorId, doctorName, appointmentId);
                     }}

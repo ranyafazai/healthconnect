@@ -26,10 +26,13 @@ export default function BasicInfo() {
       setFirstName(profile.doctorProfile?.firstName || "");
       setLastName(profile.doctorProfile?.lastName || "");
       setBio(profile.doctorProfile?.professionalBio || "");
-      if (profile.files && profile.files.length > 0) {
-        const photoFile = profile.files.find(file => file.type === 'PROFILE_PICTURE');
-        if (photoFile && photoFile.url) {
-          setPhoto(photoFile.url);
+      const relatedPhotoUrl = profile.doctorProfile?.photo?.url || profile.patientProfile?.photo?.url;
+      if (relatedPhotoUrl) {
+        setPhoto(relatedPhotoUrl);
+      } else if (profile.files && profile.files.length > 0) {
+        const photoFile: any = profile.files.find((f: any) => (f.fileType || f.type) === 'PROFILE_PICTURE');
+        if (photoFile) {
+          setPhoto(photoFile.url || photoFile.path || null);
         }
       }
     }

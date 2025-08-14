@@ -29,10 +29,18 @@ export default function BasicInfo() {
       setFirstName(profile.patientProfile?.firstName || "");
       setLastName(profile.patientProfile?.lastName || "");
       setBio(profile.patientProfile?.medicalHistory || "");
-      if (profile.files && profile.files.length > 0) {
-        const photoFile = profile.files.find(file => file.type === FileType.PROFILE_PICTURE);
+      // Prefer explicit profile photo relation
+      const relatedPhotoUrl = profile.patientProfile?.photo?.url || profile.doctorProfile?.photo?.url;
+      if (relatedPhotoUrl) {
+        setPhoto(relatedPhotoUrl);
+      } else if (profile.files && profile.files.length > 0) {
+        // Fallback to user's files collection (support both fileType and type fields, url or path)
+        const photoFile: any = profile.files.find((f: any) => {
+          const t = (f.fileType || f.type);
+          return t === FileType.PROFILE_PICTURE || t === 'PROFILE_PICTURE';
+        });
         if (photoFile) {
-          setPhoto(photoFile.path);
+          setPhoto(photoFile.url || photoFile.path || null);
         }
       }
     }

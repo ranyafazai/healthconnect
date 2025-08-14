@@ -83,7 +83,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: () => {
     // Skip rate limiting for development environment
     return process.env.NODE_ENV === 'development';
   }
@@ -100,7 +100,7 @@ const authLimiter = rateLimit({
   message: 'Too many login attempts from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: () => {
     // Skip rate limiting for development environment
     return process.env.NODE_ENV === 'development';
   }

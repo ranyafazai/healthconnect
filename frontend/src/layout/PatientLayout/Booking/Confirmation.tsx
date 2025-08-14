@@ -7,6 +7,9 @@ import FullLine from "./FullLine";
 // import { BookingSummary } from "./BookingSummary";
 import type { DoctorProfile } from '../../../types/data/doctor';
 
+// Prevent duplicate appointment creations within the same SPA session (tab)
+const inMemoryInFlightKeys = new Set<string>();
+
 interface ConfirmationProps {
   onPrev: () => void;
   bookingData: {
@@ -32,19 +35,25 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
   const [error, setError] = useState<string | null>(null);
   const [hasAttemptedCreation, setHasAttemptedCreation] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [creationTimeout, setCreationTimeout] = useState<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+  const creationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const creationStartedRef = useRef(false);
 
   // Check if we already created an appointment in this session
   const sessionKey = `appointment_${user?.id}_${doctor?.id}_${bookingData.date}_${bookingData.time}`;
   const hasCreatedInSession = sessionStorage.getItem(sessionKey);
+  const inFlightKey = `${sessionKey}_inflight`;
+  // Note: avoid reading in a variable to prevent linter warning; we read it on-demand in effects
 
-  // Check if the appointment was actually created in the Redux store
-  const createdAppointment = appointments.find(apt => 
-    apt.doctorId === doctor?.id && 
-    apt.date === `${bookingData.date}T${bookingData.time}:00` &&
-    apt.type === bookingData.consultationType
-  );
+  // Check if the appointment was actually created in the Redux store (robust time comparison)
+  const createdAppointment = appointments.find(apt => {
+    if (!doctor?.id) return false;
+    if (apt.doctorId !== doctor.id) return false;
+    if (apt.type !== bookingData.consultationType) return false;
+    // Compare up to minutes to avoid timezone/seconds differences
+    const targetPrefix = `${bookingData.date}T${bookingData.time}`; // e.g., 2025-08-15T10:00
+    return typeof apt.date === 'string' && apt.date.startsWith(targetPrefix);
+  });
 
 
 
@@ -56,6 +65,26 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     }
   }, [createdAppointment, appointmentId, isCreating]);
 
+  // Ensure redirect even if appointment was already created in this session
+  useEffect(() => {
+    if (!isNavigating && (appointmentId || hasCreatedInSession || createdAppointment)) {
+      setIsNavigating(true);
+      const t = setTimeout(() => {
+        try {
+          navigate('/patient/dashboard');
+          setTimeout(() => {
+            if (window.location.pathname !== '/patient/dashboard') {
+              window.location.href = '/patient/dashboard';
+            }
+          }, 100);
+        } catch (_err) {
+          window.location.href = '/patient/dashboard';
+        }
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [appointmentId, hasCreatedInSession, createdAppointment, isNavigating, navigate]);
+
   // Fallback: If we have an appointment ID but still in creating state, force update
   useEffect(() => {
     if (appointmentId && isCreating) {
@@ -63,43 +92,64 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     }
   }, [appointmentId, isCreating]);
 
-  // Cleanup on unmount
+  // Track mount/unmount only
   useEffect(() => {
-    // Set a timeout to prevent infinite loading (10 seconds)
-    const timeout = setTimeout(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Timeout to prevent infinite loading (10 seconds) when creating
+  useEffect(() => {
+    if (!isCreating || appointmentId) return;
+    const timeoutId = setTimeout(() => {
       if (isMountedRef.current && isCreating && !appointmentId) {
         setIsCreating(false);
         setError('Appointment creation is taking longer than expected. Please check your dashboard or try again.');
       }
     }, 10000);
-    
-    setCreationTimeout(timeout);
-    
+    creationTimeoutRef.current = timeoutId;
     return () => {
-      isMountedRef.current = false;
-      
-      // Clear timeout
-      if (creationTimeout) {
-        clearTimeout(creationTimeout);
-      }
-      
-      // Clean up session storage only if we're navigating away successfully
-      // Keep it if there was an error so user can retry
-      if (appointmentId && !error) {
-        sessionStorage.removeItem(sessionKey);
+      if (creationTimeoutRef.current) {
+        clearTimeout(creationTimeoutRef.current);
+        creationTimeoutRef.current = null;
       }
     };
-  }, [appointmentId, error, sessionKey, creationTimeout, isCreating]);
+  }, [isCreating, appointmentId]);
 
-  // Auto-create appointment when component mounts (only once)
+  // Clean up session storage once appointment is successfully created
   useEffect(() => {
-    if (bookingData && doctor && user && !hasAttemptedCreation && !isCreating && isMountedRef.current && !hasCreatedInSession) {
-      setHasAttemptedCreation(true);
-      createAppointmentInBackend();
-    } else {
-      // conditions not met; skip
+    if (appointmentId && !error) {
+      sessionStorage.removeItem(sessionKey);
     }
-  }, [bookingData, doctor, user, hasAttemptedCreation, isCreating, hasCreatedInSession]);
+  }, [appointmentId, error, sessionKey]);
+
+  // If creation was already done in this session, exit creating state
+  useEffect(() => {
+    if (isCreating && hasCreatedInSession) {
+      setIsCreating(false);
+    }
+  }, [isCreating, hasCreatedInSession]);
+
+  // Auto-create appointment when component mounts / data ready (only once per session key)
+  useEffect(() => {
+    if (!bookingData || !doctor || !user) return;
+    if (isCreating) return;
+    if (!isMountedRef.current) return;
+    // Read latest session flags inside the effect to avoid stale values under StrictMode
+    const createdInSessionNow = sessionStorage.getItem(sessionKey);
+    const inFlightNow = sessionStorage.getItem(inFlightKey);
+    if (hasAttemptedCreation || createdInSessionNow || inFlightNow || createdAppointment) {
+      // Already created earlier in this session; do not create again
+      return;
+    }
+    if (creationStartedRef.current) return;
+    if (inMemoryInFlightKeys.has(sessionKey)) return;
+    inMemoryInFlightKeys.add(sessionKey);
+    creationStartedRef.current = true;
+    setHasAttemptedCreation(true);
+    createAppointmentInBackend();
+  }, [doctor?.id, user?.id, bookingData.date, bookingData.time, bookingData.consultationType]);
 
   const createAppointmentInBackend = async () => {
     if (!user?.id || !doctor?.id || !bookingData.date || !bookingData.time || !bookingData.consultationType || !bookingData.patientInfo) {
@@ -112,6 +162,10 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       return;
     }
 
+    // Mark creation as in-flight to prevent duplicates from remounts/StrictMode
+    try {
+      sessionStorage.setItem(inFlightKey, 'true');
+    } catch {}
     setIsCreating(true);
     setError(null);
 
@@ -131,13 +185,16 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       const result = await dispatch(createAppointment(appointmentData)).unwrap();
       
       if (isMountedRef.current) {
-        // Fix: Redux action returns response.data which is { data: { data: Appointment } }
-        // So we access result.data.data.id
-        const appointmentIdFromResult = result.data.data.id;
-        setAppointmentId(appointmentIdFromResult);
+        // Support multiple possible payload shapes
+        const payload: any = result;
+        const appointment = payload?.data?.data ?? payload?.data ?? payload;
+        if (!appointment || typeof appointment.id !== 'number') {
+          throw new Error('Unexpected response from server while creating appointment');
+        }
+        setAppointmentId(appointment.id);
         
         // Mark this appointment as created in session storage to prevent duplicates
-        sessionStorage.setItem(sessionKey, 'true');
+        try { sessionStorage.setItem(sessionKey, 'true'); } catch {}
         
         // Refresh the patient's appointments to show the new appointment
         if (user?.patientProfile?.id) {
@@ -148,7 +205,18 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
         setTimeout(() => {
           if (isMountedRef.current && !isNavigating) {
             setIsNavigating(true);
-            navigate('/patient/dashboard');
+            try {
+              navigate('/patient/dashboard');
+              // Fallback: if navigate doesn't work, use window.location
+              setTimeout(() => {
+                if (window.location.pathname !== '/patient/dashboard') {
+                  window.location.href = '/patient/dashboard';
+                }
+              }, 100);
+            } catch (error) {
+              console.error('Auto-navigation error:', error);
+              window.location.href = '/patient/dashboard';
+            }
           }
         }, 3000);
       }
@@ -160,9 +228,13 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
       if (isMountedRef.current) {
         setHasAttemptedCreation(false);
       }
+      creationStartedRef.current = false;
+      try { inMemoryInFlightKeys.delete(sessionKey); } catch {}
     } finally {
       // Always set isCreating to false, regardless of mount status
       setIsCreating(false);
+      // Clear in-flight flag
+      try { sessionStorage.removeItem(inFlightKey); } catch {}
     }
   };
 
@@ -170,30 +242,33 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
     if (isMountedRef.current) {
       setError(null);
       setHasAttemptedCreation(false);
+      creationStartedRef.current = true;
+      try { inMemoryInFlightKeys.add(sessionKey); } catch {}
       createAppointmentInBackend();
     }
   };
 
   const handleNavigateToDashboard = () => {
+    console.log('Navigate to dashboard clicked');
     if (isMountedRef.current && !isNavigating) {
       setIsNavigating(true);
-      navigate('/patient/dashboard');
+      // Force navigation with window.location as fallback
+      try {
+        navigate('/patient/dashboard');
+        // Fallback: if navigate doesn't work, use window.location
+        setTimeout(() => {
+          if (window.location.pathname !== '/patient/dashboard') {
+            window.location.href = '/patient/dashboard';
+          }
+        }, 100);
+      } catch (error) {
+        console.error('Navigation error:', error);
+        window.location.href = '/patient/dashboard';
+      }
     }
   };
 
   if (isCreating) {
-    // Check if we actually have an appointment ID or if it was created in session storage
-    // This handles the case where the appointment was created but the state didn't update properly
-    if (appointmentId || hasCreatedInSession) {
-      // Force the component to show success state by updating state
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          setIsCreating(false);
-        }
-      }, 100);
-      // Show loading state briefly while transitioning
-    }
-    
     return (
       <div className="min-h-screen bg-gray-50">
         <DoctorCard doctor={doctor} />
@@ -316,9 +391,14 @@ export function Confirmation({ onPrev, bookingData, doctor }: ConfirmationProps)
                 </p>
                 <button
                   onClick={handleNavigateToDashboard}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium"
+                  disabled={isNavigating}
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                    isNavigating 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
                 >
-                  Go to Dashboard Now
+                  {isNavigating ? 'Redirecting...' : 'Go to Dashboard Now'}
                 </button>
               </div>
             </div>

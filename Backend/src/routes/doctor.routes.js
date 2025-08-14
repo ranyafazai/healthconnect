@@ -26,6 +26,10 @@ router.post('/', authMiddleware, isDoctor, doctorController.createDoctorProfile)
 // Update doctor profile
 router.put('/:id', authMiddleware, isDoctor, doctorController.updateDoctorProfile);
 
+// Certifications management
+router.post('/:id/certifications', authMiddleware, isDoctor, doctorController.addCertification);
+router.delete('/:id/certifications/:certId', authMiddleware, isDoctor, doctorController.removeCertification);
+
 // Delete doctor profile
 router.delete('/:id', authMiddleware, isDoctor, doctorController.deleteDoctorProfile);
 

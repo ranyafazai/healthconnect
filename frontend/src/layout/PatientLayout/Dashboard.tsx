@@ -5,7 +5,6 @@ import {
   Calendar,
   MessageSquare,
   CheckCircle,
-  FileText,
   Video,
   User,
   Info
@@ -78,7 +77,6 @@ export default function Dashboard() {
   const unreadMessages = Array.isArray(messages) 
     ? messages.filter((msg: Message) => !msg.isRead) 
     : [];
-  const healthRecords = 8; // Mock data for now - would need to fetch from medical records API
 
   // Show loading state while data is being fetched
   if (appointmentsLoading || messagesLoading) {
@@ -133,12 +131,6 @@ export default function Dashboard() {
       icon: <MessageSquare className="text-yellow-500" size={20} />,
       color: "text-yellow-500"
     },
-    { 
-      title: "Health Records", 
-      value: healthRecords, 
-      icon: <FileText className="text-purple-500" size={20} />,
-      color: "text-purple-500"
-    },
   ];
 
   const getUserName = () => {
@@ -168,6 +160,17 @@ export default function Dashboard() {
       }))
     : [];
 
+  const formatTimeAgo = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    if (diffInHours < 48) return '1 day ago';
+    return `${Math.floor(diffInHours / 24)} days ago`;
+  };
+
   // Get recent messages with doctor details
   const recentMessagesData = Array.isArray(messages) 
     ? messages.slice(0, 2).map((message: Message) => ({
@@ -183,17 +186,6 @@ export default function Dashboard() {
         unread: !message.isRead
       }))
     : [];
-
-  const formatTimeAgo = (date: Date | string) => {
-    const dateObj = date instanceof Date ? date : new Date(date);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInHours < 48) return '1 day ago';
-    return `${Math.floor(diffInHours / 24)} days ago`;
-  };
 
   return (
     <div className="flex-1 bg-gray-50 p-6">

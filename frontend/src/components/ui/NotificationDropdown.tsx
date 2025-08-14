@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
+import { useNavigate } from 'react-router-dom';
 import type { RootState } from '../../Redux/store';
 import { fetchNotifications, markAsRead, markAllAsRead as markAllAsReadAction } from '../../Redux/notificationSlice/notificationSlice';
 import { getSocket } from '../../lib/socket';
@@ -12,6 +13,7 @@ interface NotificationDropdownProps {
 
 export default function NotificationDropdown({ className = '' }: NotificationDropdownProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { notifications, loading } = useAppSelector((state: RootState) => state.notification);
   
@@ -89,17 +91,15 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
     switch (notification.type) {
       case 'APPOINTMENT':
         // Navigate to appointments page
-        window.location.href = user?.role === 'DOCTOR' ? '/doctor/appointments' : '/patient/appointments';
+        navigate(user?.role === 'DOCTOR' ? '/doctor/appointments' : '/patient/appointments');
         break;
       case 'MESSAGE':
         // Navigate to messages page
-        window.location.href = user?.role === 'DOCTOR' ? '/doctor/messages' : '/patient/messages';
+        navigate(user?.role === 'DOCTOR' ? '/doctor/messages' : '/patient/messages');
         break;
       case 'REVIEW':
-        // Navigate to reviews page (for doctors)
-        if (user?.role === 'DOCTOR') {
-          window.location.href = '/doctor/reviews';
-        }
+        // Navigate to reviews page (for both doctors and patients)
+        navigate(user?.role === 'DOCTOR' ? '/doctor/reviews' : '/patient/reviews');
         break;
       case 'SYSTEM':
         // System notifications don't navigate
@@ -251,7 +251,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
               <button
                 onClick={() => {
                   // Navigate to notifications page or show all notifications
-                  window.location.href = user?.role === 'DOCTOR' ? '/doctor/notifications' : '/patient/notifications';
+                  navigate(user?.role === 'DOCTOR' ? '/doctor/notifications' : '/patient/notifications');
                 }}
                 className="w-full text-sm text-blue-600 hover:text-blue-800 text-center"
               >

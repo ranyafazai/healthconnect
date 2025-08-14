@@ -242,7 +242,9 @@ export default function registerChatSocket(io) {
     socket.on('disconnect', () => {
       try {
         socket.removeAllListeners();
-      } catch {}
+      } catch (_err) {
+        void _err;
+      }
       logger.info(`Chat socket disconnected: ${socket.id}`);
     });
   });

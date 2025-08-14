@@ -13,6 +13,9 @@ router.get('/appointment/:appointmentId', authMiddleware, messageController.getM
 // Get unread count for current user
 router.get('/unread/count', authMiddleware, messageController.getUnreadCount);
 
+// Debug endpoint to get all messages for current user
+router.get('/debug/all', authMiddleware, messageController.getAllMessages);
+
 // Send message
 router.post('/', authMiddleware, messageController.sendMessage);
 

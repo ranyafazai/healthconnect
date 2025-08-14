@@ -16,6 +16,34 @@ const initialState: LocalAuthState = {
   error: null,
 };
 
+// Async thunk to check authentication status
+export const checkAuthStatus = createAsyncThunk(
+  'auth/checkStatus',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getMe();
+      return response.data.user;
+    } catch (error: any) {
+      // Log the error for debugging
+      console.error('Auth check failed:', error?.response?.status, error?.response?.data);
+      return rejectWithValue('Authentication failed');
+    }
+  }
+);
+
+// Async thunk to logout
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await logout();
+      return true;
+    } catch (error) {
+      return rejectWithValue('Logout failed');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -68,32 +96,6 @@ const authSlice = createSlice({
       });
   },
 });
-
-// Async thunk to check authentication status
-export const checkAuthStatus = createAsyncThunk(
-  'auth/checkStatus',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await getMe();
-      return response.data.user;
-    } catch (error) {
-      return rejectWithValue('Authentication failed');
-    }
-  }
-);
-
-// Async thunk to logout
-export const logoutUser = createAsyncThunk(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
-    try {
-      await logout();
-      return true;
-    } catch (error) {
-      return rejectWithValue('Logout failed');
-    }
-  }
-);
 
 export const { setAuth, clearAuth, setLoading, setError } = authSlice.actions;
 export default authSlice.reducer;

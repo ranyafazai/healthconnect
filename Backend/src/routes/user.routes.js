@@ -1,7 +1,7 @@
 import express from 'express';
 import userController from '../controllers/user.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { isDoctor, isPatient } from '../middlewares/roleCheck.js';
+// import { isDoctor, isPatient } from '../middlewares/roleCheck.js';
 import { upload } from '../config/multer.js';
 
 const router = express.Router();

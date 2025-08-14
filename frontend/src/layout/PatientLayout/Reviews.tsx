@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchPatientReviews, deleteReview } from '../../Redux/reviewSlice/reviewSlice';
-import { Star, Trash2 } from 'lucide-react';
+import { Star, Trash2, AlertTriangle } from 'lucide-react';
 
 const Reviews: React.FC = () => {
   const dispatch = useAppDispatch();
   const { reviews, loading } = useAppSelector((state) => state.review);
   const { user } = useAppSelector((state) => state.auth);
+
+  const [confirm, setConfirm] = useState<{ id: number } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
@@ -15,8 +18,17 @@ const Reviews: React.FC = () => {
   }, [dispatch, user?.patientProfile?.id]);
 
   const handleDeleteReview = async (reviewId: string | number) => {
-    if (window.confirm('Are you sure you want to delete this review?')) {
-      await dispatch(deleteReview(Number(reviewId))).unwrap();
+    setConfirm({ id: Number(reviewId) });
+  };
+
+  const confirmDelete = async () => {
+    if (!confirm) return;
+    try {
+      setIsDeleting(true);
+      await dispatch(deleteReview(confirm.id)).unwrap();
+      setConfirm(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -135,6 +147,42 @@ const Reviews: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Elegant Confirm Delete Modal */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isDeleting && setConfirm(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete review?</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                This action cannot be undone. The review will be permanently removed from your history.
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3 bg-gray-50">
+              <button
+                onClick={() => setConfirm(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

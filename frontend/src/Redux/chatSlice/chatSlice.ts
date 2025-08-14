@@ -3,7 +3,6 @@ import { getSocket } from '../../lib/socket';
 import { getConversation, sendMessage, getAppointmentMessages } from '../../Api/message.api';
 import axios from '../../lib/axios';
 import type { Message, MessageType } from '../../types/data/message';
-import type { RootState } from '../store';
 
 export type ConversationLite = {
   id: number;
@@ -148,7 +147,9 @@ export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId:
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
   async (otherUserId: number) => {
+    console.log('Fetching conversation for user:', otherUserId);
     const res = await getConversation(otherUserId);
+    console.log('Conversation response:', res);
     return res.data?.data ?? [];
   }
 );
@@ -156,7 +157,9 @@ export const fetchConversation = createAsyncThunk(
 export const fetchAppointmentMessages = createAsyncThunk(
   'chat/fetchAppointmentMessages',
   async (appointmentId: number) => {
+    console.log('Fetching appointment messages for:', appointmentId);
     const res = await getAppointmentMessages(appointmentId);
+    console.log('Appointment messages response:', res);
     return res.data?.data ?? [];
   }
 );
@@ -168,10 +171,10 @@ export const sendTextMessage = createAsyncThunk(
     { getState, dispatch }
   ) => {
     await sendMessage({ ...payload, type: payload.type ?? 'TEXT' });
-    // Optimistic UI update handled by component previously; here we'll let socket echo back
-    // For immediate feel, dispatch optional optimistic message if needed
-    const state = getState() as RootState;
-    const currentUserId = state?.auth?.user?.id as number | undefined;
+         // Optimistic UI update handled by component previously; here we'll let socket echo back
+     // For immediate feel, dispatch optional optimistic message if needed
+     const state = getState() as any;
+     const currentUserId = state?.auth?.user?.id as number | undefined;
     if (currentUserId) {
              const optimistic: Message = {
          id: Date.now(),
@@ -203,9 +206,9 @@ export const sendFileMessage = createAsyncThunk(
         messageType = 'VIDEO';
       }
       
-      // Create optimistic message first (for immediate UI feedback)
-      const state = getState() as RootState;
-      const currentUserId = state?.auth?.user?.id as number | undefined;
+             // Create optimistic message first (for immediate UI feedback)
+       const state = getState() as any;
+       const currentUserId = state?.auth?.user?.id as number | undefined;
       if (currentUserId) {
         const optimistic: Message = {
           id: Date.now(),
@@ -389,7 +392,7 @@ const chatSlice = createSlice({
 
 export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations, setUnreadCount, updateConversationLastMessage } = chatSlice.actions;
 
-export const selectChat = (state: RootState) => state.chat as ChatState;
+export const selectChat = (state: any) => state.chat as ChatState;
 
 export default chatSlice.reducer;
 

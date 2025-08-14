@@ -9,8 +9,7 @@ export default function registerVideoCallSocket(io) {
     try {
       // Check if user ID is provided in auth object for development
       const userId = socket.handshake.auth?.userId;
-      if (userId) {
-        
+    if (userId) {
         socket.userId = parseInt(userId);
         return next();
       }
@@ -168,7 +167,8 @@ export default function registerVideoCallSocket(io) {
             },
           });
         } else {
-          
+          // existing call found; proceed to join
+          // no additional action needed
         }
 
         // Join the room
@@ -375,7 +375,9 @@ export default function registerVideoCallSocket(io) {
               appointmentId: socket.appointmentId,
             });
           }
-        } catch {}
+        } catch (_err) {
+          // ignore
+        }
 
         // Leave the room
         socket.leave(`call-${socket.roomId}`);
@@ -441,7 +443,7 @@ export default function registerVideoCallSocket(io) {
     // Handle disconnection with cleanup
     socket.on('disconnect', async () => {
       try {
-        try { socket.removeAllListeners(); } catch {}
+        try { socket.removeAllListeners(); } catch (_err) { /* noop */ }
         if (socket.roomId) {
           // Notify other participants
           socket.to(`call-${socket.roomId}`).emit('user-disconnected', {

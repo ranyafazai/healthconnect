@@ -3,6 +3,7 @@ import type { Appointment, AppointmentStatus } from '../types/data/appointment';
 
 // Define the UIConsultation interface for past consultations
 interface UIConsultation {
+  doctorId: number;
   id: number;
   doctorName: string;
   doctorSpecialization: string;

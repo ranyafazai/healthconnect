@@ -4,7 +4,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   medicalRecordResponse,
   listResponse,
   paginatedResponse,

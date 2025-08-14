@@ -40,3 +40,10 @@ export const searchDoctors = (filters: {
   });
   return axios.get<{ data: DoctorProfile[]; pagination?: any }>(`/doctors/search?${params.toString()}`);
 };
+
+// Certifications
+export const addCertification = (doctorId: number, fileId: number) => 
+  axios.post<{ data: any }>(`/doctors/${doctorId}/certifications`, { fileId });
+
+export const removeCertification = (doctorId: number, certId: number) => 
+  axios.delete<{ data: any }>(`/doctors/${doctorId}/certifications/${certId}`);

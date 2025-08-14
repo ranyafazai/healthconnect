@@ -18,9 +18,9 @@ function DoctorPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar isAuthenticated={isAuthenticated} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         <Sidebar />
-        <main className="flex-1  bg-gray-50">
+        <main className="flex-1 bg-gray-50 min-h-0">
           <Routes>
             {/* Dashboard - requires basic profile read permission */}
             <Route 
