@@ -1,6 +1,6 @@
 // backend/src/server.js
 import http from "http";
-import { Server as SocketIOServer } from "socket.io";
+// import { Server as SocketIOServer } from "socket.io";
 import dotenv from "dotenv";
 import app from "./app.js";
 import { prisma } from "./app.js";

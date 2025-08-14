@@ -1,17 +1,17 @@
-import React from 'react';
+import type { ReactNode, FC } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
-import { hasPermission, getProtectedRouteProps } from '../../lib/permissions';
+import { getProtectedRouteProps } from '../../lib/permissions';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requiredPermissions?: string[];
   requiredRole?: 'DOCTOR' | 'PATIENT' | 'ADMIN';
   fallbackPath?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+const ProtectedRoute: FC<ProtectedRouteProps> = ({
   children,
   requiredPermissions = [],
   requiredRole,

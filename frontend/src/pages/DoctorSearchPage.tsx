@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../Redux/hooks';
 import type { RootState } from '../Redux/store';
@@ -11,21 +11,20 @@ import {
   Star, 
   Clock, 
   Sparkles, 
-  ChevronDown,
-  Filter,
-  X
+  ChevronDown
 } from 'lucide-react';
 import type { DoctorProfile } from '../types/data/doctor';
+import { getUploadedFileUrl } from '../utils/fileUrl';
 
 export default function DoctorSearchPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
   const { searchResults, searchLoading, filters, sortBy } = useAppSelector((state: RootState) => state.doctor);
   const { isAuthenticated } = useAppSelector((state: RootState) => state.auth);
   
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters] = useState(false);
   const [localFilters, setLocalFilters] = useState(filters);
 
   const query = searchParams.get('q') || '';
@@ -107,7 +106,7 @@ export default function DoctorSearchPage() {
       sortBy
     };
     
-    console.log('DoctorSearchPage: Triggering search with params:', searchParams);
+
     
     dispatch(searchDoctors(searchParams));
   }, [query, filters, sortBy, dispatch]);
@@ -128,77 +127,87 @@ export default function DoctorSearchPage() {
   };
 
   const handleDoctorClick = (doctor: DoctorProfile) => {
-    navigate(`/doctor/${doctor.id}`);
+    navigate(`/doctor-detail/${doctor.id}`);
   };
 
   const getDoctorInitials = (doctor: DoctorProfile) => {
     return `${doctor.firstName.charAt(0)}${doctor.lastName.charAt(0)}`.toUpperCase();
   };
 
+  // Helpers to normalize availability shapes (array of "HH:MM-HH:MM", { slots: [{start,end}] }, or { available, hours })
+  const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+  const toMinutes = (hhmm: string): number => {
+    const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+    return h * 60 + m;
+  };
+  const normalizeDaySlots = (availability: any, dayKey: string): Array<{ startMin: number; endMin: number }> => {
+    if (!availability) return [];
+    const dayVal = availability[dayKey];
+    if (!dayVal) return [];
+    const slots: Array<{ startMin: number; endMin: number }> = [];
+    // Case 1: array of strings like "08:00-12:00"
+    if (Array.isArray(dayVal)) {
+      dayVal.forEach((range) => {
+        if (typeof range === 'string' && range.includes('-')) {
+          const [start, end] = range.split('-');
+          const startMin = toMinutes(start);
+          const endMin = toMinutes(end);
+          if (startMin >= 0 && endMin >= 0 && endMin > startMin) slots.push({ startMin, endMin });
+        }
+      });
+      return slots;
+    }
+    // Case 2: object with slots: [{ start, end }]
+    if (typeof dayVal === 'object' && dayVal?.slots && Array.isArray(dayVal.slots)) {
+      dayVal.slots.forEach((slot: any) => {
+        if (slot?.start && slot?.end) {
+          const startMin = toMinutes(String(slot.start));
+          const endMin = toMinutes(String(slot.end));
+          if (startMin >= 0 && endMin >= 0 && endMin > startMin) slots.push({ startMin, endMin });
+        }
+      });
+      return slots;
+    }
+    // Case 3: object with available/hours
+    if (typeof dayVal === 'object' && dayVal?.available && Array.isArray(dayVal.hours)) {
+      dayVal.hours.forEach((range: any) => {
+        if (typeof range === 'string' && range.includes('-')) {
+          const [start, end] = range.split('-');
+          const startMin = toMinutes(start);
+          const endMin = toMinutes(end);
+          if (startMin >= 0 && endMin >= 0 && endMin > startMin) slots.push({ startMin, endMin });
+        }
+      });
+      return slots;
+    }
+    return [];
+  };
+
   const getAvailabilityText = (availability: any) => {
     const now = new Date();
     const currentDay = now.getDay();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute; // Convert to minutes for easier comparison
-    
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayKey = days[currentDay];
-    
-    // Check if doctor has availability for today
-    if (availability[todayKey]) {
-      const todayAvailability = availability[todayKey];
-      
-      // Check if there are available slots
-      if (todayAvailability.slots && todayAvailability.slots.length > 0) {
-        // Check if current time is within any available slot
-        const isCurrentlyAvailable = todayAvailability.slots.some((slot: any) => {
-          const [startHour, startMinute] = slot.start.split(':').map(Number);
-          const [endHour, endMinute] = slot.end.split(':').map(Number);
-          
-          const startTimeMinutes = startHour * 60 + startMinute;
-          const endTimeMinutes = endHour * 60 + endMinute;
-          
-          // Check if current time is within this slot
-          return currentTime >= startTimeMinutes && currentTime <= endTimeMinutes;
-        });
-        
-        if (isCurrentlyAvailable) {
-          return 'Available Now';
-        } else {
-          // Check if there are future slots today
-          const hasFutureSlots = todayAvailability.slots.some((slot: any) => {
-            const [startHour, startMinute] = slot.start.split(':').map(Number);
-            const startTimeMinutes = startHour * 60 + startMinute;
-            return currentTime < startTimeMinutes;
-          });
-          
-          if (hasFutureSlots) {
-            return 'Available Later Today';
-          } else {
-            return 'Closed for Today';
-          }
-        }
-      }
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const todayKey = dayKeys[currentDay];
+
+    const todaySlots = normalizeDaySlots(availability, todayKey);
+    if (todaySlots.length > 0) {
+      const isNow = todaySlots.some((s) => currentTime >= s.startMin && currentTime <= s.endMin);
+      if (isNow) return 'Available Now';
+      const hasLater = todaySlots.some((s) => currentTime < s.startMin);
+      if (hasLater) return 'Available Later Today';
+      return 'Closed for Today';
     }
-    
-    // Check for tomorrow
-    const tomorrow = (currentDay + 1) % 7;
-    const tomorrowKey = days[tomorrow];
-    
-    if (availability[tomorrowKey]?.slots?.length > 0) {
-      return 'Available Tomorrow';
-    }
-    
-    // Check for this week
+
+    const tomorrowKey = dayKeys[(currentDay + 1) % 7];
+    if (normalizeDaySlots(availability, tomorrowKey).length > 0) return 'Available Tomorrow';
+
     for (let i = 2; i < 7; i++) {
-      const dayIndex = (currentDay + i) % 7;
-      const dayKey = days[dayIndex];
-      if (availability[dayKey]?.slots?.length > 0) {
-        return `Available ${dayKey.charAt(0).toUpperCase() + dayKey.slice(1)}`;
+      const key = dayKeys[(currentDay + i) % 7];
+      if (normalizeDaySlots(availability, key).length > 0) {
+        return `Available ${key.charAt(0).toUpperCase() + key.slice(1)}`;
       }
     }
-    
     return 'No Availability';
   };
 
@@ -219,70 +228,38 @@ export default function DoctorSearchPage() {
 
     const now = new Date();
     const currentDay = now.getDay();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
-    
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayKey = days[currentDay];
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const todayKey = dayKeys[currentDay];
     
     return searchResults.filter(doctor => {
       if (!doctor.availability) return false;
-      
-      switch (filters.availability) {
-        case 'Available Now':
-          // Check if doctor is currently available (within working hours today)
-          if (doctor.availability[todayKey]?.slots?.length > 0) {
-            return doctor.availability[todayKey].slots.some(slot => {
-              const [startHour, startMinute] = slot.start.split(':').map(Number);
-              const [endHour, endMinute] = slot.end.split(':').map(Number);
-              
-              const startTimeMinutes = startHour * 60 + startMinute;
-              const endTimeMinutes = endHour * 60 + endMinute;
-              
-              // Check if current time is within this slot
-              return currentTime >= startTimeMinutes && currentTime <= endTimeMinutes;
-            });
-          }
-          return false;
-          
-        case 'Available Today':
-          // Check if doctor has any availability today
-          return doctor.availability[todayKey]?.slots?.length > 0;
-          
-        case 'Available Tomorrow':
-          const tomorrow = (currentDay + 1) % 7;
-          const tomorrowKey = days[tomorrow];
-          return doctor.availability[tomorrowKey]?.slots?.length > 0;
-          
-        case 'Available This Week':
-          // Check if doctor has any availability in the next 7 days
-          for (let i = 0; i < 7; i++) {
-            const dayIndex = (currentDay + i) % 7;
-            const dayKey = days[dayIndex];
-            if (doctor.availability[dayKey]?.slots?.length > 0) {
-              return true;
-            }
-          }
-          return false;
-          
-        case 'Available Next Week':
-          // Check if doctor has any availability in the next 7-14 days
-          // Calculate actual dates for next week (7-13 days from now)
-          for (let i = 7; i < 14; i++) {
-            const futureDate = new Date();
-            futureDate.setDate(futureDate.getDate() + i);
-            const dayIndex = futureDate.getDay();
-            const dayKey = days[dayIndex];
-            if (doctor.availability[dayKey]?.slots?.length > 0) {
-              return true;
-            }
-          }
-          return false;
-          
-        default:
-          return true;
+      const slotsToday = normalizeDaySlots(doctor.availability, todayKey);
+      if (filters.availability === 'Available Now') {
+        if (slotsToday.length === 0) return false;
+        return slotsToday.some((s) => currentTime >= s.startMin && currentTime <= s.endMin);
       }
+      if (filters.availability === 'Available Today') {
+        return slotsToday.length > 0;
+      }
+      if (filters.availability === 'Available Tomorrow') {
+        const tomorrowKey = dayKeys[(currentDay + 1) % 7];
+        return normalizeDaySlots(doctor.availability, tomorrowKey).length > 0;
+      }
+      if (filters.availability === 'Available This Week') {
+        for (let i = 0; i < 7; i++) {
+          const key = dayKeys[(currentDay + i) % 7];
+          if (normalizeDaySlots(doctor.availability, key).length > 0) return true;
+        }
+        return false;
+      }
+      if (filters.availability === 'Available Next Week') {
+        for (let i = 7; i < 14; i++) {
+          const key = dayKeys[(currentDay + i) % 7];
+          if (normalizeDaySlots(doctor.availability, key).length > 0) return true;
+        }
+        return false;
+      }
+      return true;
     });
   };
 
@@ -476,7 +453,7 @@ export default function DoctorSearchPage() {
                       <div className="flex-shrink-0">
                         {doctor.photo ? (
                           <img
-                            src={doctor.photo.url}
+                            src={getUploadedFileUrl(doctor.photo)}
                             alt={`${doctor.firstName} ${doctor.lastName}`}
                             className="w-12 h-12 rounded-full object-cover"
                           />
@@ -530,7 +507,13 @@ export default function DoctorSearchPage() {
                             <button className="text-sm text-gray-500 hover:text-gray-700 p-1">
                               <Clock className="w-4 h-4" />
                             </button>
-                            <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/doctor-detail/${doctor.id}`);
+                              }}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium"
+                            >
                               Book Now
                             </button>
                           </div>

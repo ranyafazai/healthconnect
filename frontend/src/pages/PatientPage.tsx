@@ -14,16 +14,19 @@ import NotFound from "./NotFound";
 import BookingProcess from "../layout/PatientLayout/BookingProces";
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 import { PERMISSIONS } from "../lib/permissions";
+import ReviewModal from "../components/review/ReviewModal";
+import { useReviewModalContext } from "../contexts/ReviewModalContext";
 
 function PatientPage() {
   const { isAuthenticated } = useAppSelector((state: RootState) => state.auth);
+  const { modalState, closeReviewModal } = useReviewModalContext();
 
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar isAuthenticated={isAuthenticated} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
         <Sidebar />
-        <main className="flex-1 p-8 bg-gray-50">
+        <main className="flex-1 bg-gray-50 min-h-0">
           <Routes>
             {/* Booking - requires appointment creation permission */}
             <Route 
@@ -111,6 +114,15 @@ function PatientPage() {
           </Routes>
         </main>
       </div>
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={modalState.isOpen}
+        onClose={closeReviewModal}
+        doctorId={modalState.doctorId || 0}
+        doctorName={modalState.doctorName}
+        appointmentId={modalState.appointmentId || undefined}
+      />
     </div>
   );
 }

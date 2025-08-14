@@ -2,7 +2,7 @@
 /* eslint-disable import/named */
 // @ts-ignore - Some tooling falsely flags named import; Redux Toolkit v2 exports it
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer, { saveStateToStorage } from "./authSlice/authSlice";
+import authReducer from "./authSlice/authSlice";
 import chatReducer from "./chatSlice/chatSlice";
 import appointmentReducer from "./appointmentSlice/appointmentSlice";
 import doctorReducer from "./doctorSlice/doctorSlice";
@@ -32,18 +32,9 @@ export const store = configureStore({
     }),
 });
 
-// Debug logs removed for production readiness
 
-// Subscribe to store changes and save auth state to localStorage
-// Only save when auth state actually changes to prevent excessive localStorage operations
-let previousAuthState: string | null = null;
 
-store.subscribe(() => {
-  const state = store.getState();
-  saveStateToStorage(state.auth);
-  
-  // Persist minimal auth state only
-});
+// No localStorage persistence: backend cookie is source of truth
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

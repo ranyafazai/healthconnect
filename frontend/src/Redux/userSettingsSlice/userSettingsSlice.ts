@@ -19,12 +19,9 @@ export const fetchUserSettings = createAsyncThunk(
   'userSettings/fetchUserSettings',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Fetching user settings...');
       const response = await getUserSettings();
-      console.log('User settings response:', response);
       return response.data.data;
     } catch (error: any) {
-      console.error('Error fetching user settings:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user settings');
     }
   }
@@ -34,12 +31,9 @@ export const updateUserSettingsAsync = createAsyncThunk(
   'userSettings/updateUserSettings',
   async (settings: Partial<UserSettings>, { rejectWithValue }) => {
     try {
-      console.log('Updating user settings:', settings);
       const response = await updateUserSettings(settings);
-      console.log('Update settings response:', response);
       return response.data.data;
     } catch (error: any) {
-      console.error('Error updating user settings:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to update user settings');
     }
   }

@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchPatientReviews, deleteReview } from '../../Redux/reviewSlice/reviewSlice';
-import { Star, Edit, Trash2, Plus } from 'lucide-react';
-import ReviewForm from '../../components/review/ReviewForm';
-import type { Review } from '../../types/data/review';
+import { Star, Trash2, AlertTriangle } from 'lucide-react';
 
 const Reviews: React.FC = () => {
   const dispatch = useAppDispatch();
   const { reviews, loading } = useAppSelector((state) => state.review);
   const { user } = useAppSelector((state) => state.auth);
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [editingReview, setEditingReview] = useState<Review | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<{ id: number; name: string } | null>(null);
+
+  const [confirm, setConfirm] = useState<{ id: number } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
@@ -19,36 +17,19 @@ const Reviews: React.FC = () => {
     }
   }, [dispatch, user?.patientProfile?.id]);
 
-  const handleDeleteReview = async (reviewId: number) => {
-    if (window.confirm('Are you sure you want to delete this review?')) {
-      try {
-        await dispatch(deleteReview(reviewId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete review:', error);
-        alert('Failed to delete review. Please try again.');
-      }
+  const handleDeleteReview = async (reviewId: string | number) => {
+    setConfirm({ id: Number(reviewId) });
+  };
+
+  const confirmDelete = async () => {
+    if (!confirm) return;
+    try {
+      setIsDeleting(true);
+      await dispatch(deleteReview(confirm.id)).unwrap();
+      setConfirm(null);
+    } finally {
+      setIsDeleting(false);
     }
-  };
-
-  const handleEditReview = (review: Review) => {
-    setEditingReview(review);
-    setShowReviewForm(true);
-  };
-
-  const handleReviewSuccess = () => {
-    setShowReviewForm(false);
-    setEditingReview(null);
-    setSelectedDoctor(null);
-    // Refresh reviews
-    if (user?.patientProfile?.id) {
-      dispatch(fetchPatientReviews(user.patientProfile.id));
-    }
-  };
-
-  const handleCancel = () => {
-    setShowReviewForm(false);
-    setEditingReview(null);
-    setSelectedDoctor(null);
   };
 
   const formatDate = (dateString: string | Date) => {
@@ -67,43 +48,10 @@ const Reviews: React.FC = () => {
     );
   }
 
-  if (showReviewForm) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingReview ? 'Edit Review' : 'Write a Review'}
-          </h1>
-          <button
-            onClick={handleCancel}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-        
-        <ReviewForm
-          doctorId={editingReview?.doctorId || selectedDoctor?.id || 0}
-          doctorName={editingReview?.doctor?.firstName + ' ' + editingReview?.doctor?.lastName || selectedDoctor?.name || ''}
-          appointmentId={editingReview?.appointmentId}
-          onSuccess={handleReviewSuccess}
-          onCancel={handleCancel}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">My Reviews</h1>
-        <button
-          onClick={() => setShowReviewForm(true)}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          <Plus size={16} className="mr-2" />
-          Write a Review
-        </button>
       </div>
 
       {/* Reviews Summary */}
@@ -186,13 +134,6 @@ const Reviews: React.FC = () => {
                   
                   <div className="flex space-x-2 ml-4">
                     <button
-                      onClick={() => handleEditReview(review)}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Edit review"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button
                       onClick={() => handleDeleteReview(review.id)}
                       className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                       title="Delete review"
@@ -206,6 +147,42 @@ const Reviews: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Elegant Confirm Delete Modal */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isDeleting && setConfirm(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete review?</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                This action cannot be undone. The review will be permanently removed from your history.
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3 bg-gray-50">
+              <button
+                onClick={() => setConfirm(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

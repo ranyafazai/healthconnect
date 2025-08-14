@@ -1,10 +1,8 @@
 import { prisma } from '../app.js';
 import {
-  successResponse,
   errorResponse,
   notFoundResponse,
   serverErrorResponse,
-  createdResponse,
   videoCallResponse,
   listResponse,
 } from '../utils/responseFormatter.js';

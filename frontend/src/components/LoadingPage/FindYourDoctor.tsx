@@ -59,8 +59,7 @@ export function FindYourDoctor() {
       // Navigate to search results page
       navigate('/search');
       
-      // Log the search parameters for debugging
-      console.log('Search initiated with filters:', newFilters);
+
     } catch (error) {
       console.error('Search error:', error);
     } finally {

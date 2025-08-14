@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { fetchUserProfile } from "../../../Redux/userSlice/userSlice";
 import { updateDoctorProfile } from "../../../Api/doctor.api";
@@ -15,7 +15,7 @@ const weekdays = [
 
 export default function Availability() {
   const dispatch = useAppDispatch();
-  const { profile, loading } = useAppSelector((state) => state.user);
+  const { profile } = useAppSelector((state) => state.user);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -30,15 +30,7 @@ export default function Availability() {
     Sunday: 'sunday',
   };
 
-  const keyToDayName: Record<DayKey, string> = {
-    monday: 'Monday',
-    tuesday: 'Tuesday',
-    wednesday: 'Wednesday',
-    thursday: 'Thursday',
-    friday: 'Friday',
-    saturday: 'Saturday',
-    sunday: 'Sunday',
-  };
+  // keyToDayName mapping not used currently
 
   const [schedule, setSchedule] = useState(
     weekdays.map((day) => ({
@@ -143,14 +135,13 @@ export default function Availability() {
     try {
       // Use the correct doctor API endpoint
       await updateDoctorProfile(profile.doctorProfile.id, {
-        availability: JSON.stringify(availability)
+        availability: availability as any
       });
       
       // Refresh the user profile to get updated data
       dispatch(fetchUserProfile());
       setUpdateMessage({ type: 'success', text: 'Availability updated successfully!' });
     } catch (error) {
-      console.error('Failed to update availability:', error);
       setUpdateMessage({ type: 'error', text: 'Failed to update availability. Please try again.' });
     } finally {
       setIsUpdating(false);

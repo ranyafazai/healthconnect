@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, AlertTriangle } from 'lucide-react';
 import type { RootState } from '../../Redux/store';
 import { fetchAppointmentsByPatient, updateAppointmentStatus, deleteAppointment, setPage } from '../../Redux/appointmentSlice/appointmentSlice';
-import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
+import type { AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -11,7 +12,10 @@ const Appointments: React.FC = () => {
   const { appointments, loading, page, limit, total } = useAppSelector((state: RootState) => state.appointment);
   
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<{ id: number } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  // Remove unused state to satisfy linter
+  // const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
@@ -35,12 +39,8 @@ const Appointments: React.FC = () => {
            aptDate.getFullYear() === currentDate.getFullYear();
   });
 
-  // Get today's appointments
-  const todayAppointments = appointments.filter(apt => {
-    const aptDate = new Date(apt.date);
-    const today = new Date();
-    return aptDate.toDateString() === today.toDateString();
-  });
+  // Compute today's appointments when needed in the future
+  // const todayAppointments = appointments.filter(apt => new Date(apt.date).toDateString() === new Date().toDateString());
 
   const renderCalendarDays = () => {
     const year = currentDate.getFullYear();
@@ -137,12 +137,19 @@ const Appointments: React.FC = () => {
   };
 
   const handleDeleteAppointment = async (appointmentId: number) => {
-    if (window.confirm('Are you sure you want to cancel this appointment?')) {
-      try {
-        await dispatch(deleteAppointment(appointmentId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete appointment:', error);
-      }
+    setConfirmCancel({ id: appointmentId });
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmCancel) return;
+    try {
+      setIsCancelling(true);
+      await dispatch(deleteAppointment(confirmCancel.id)).unwrap();
+      setConfirmCancel(null);
+    } catch (error) {
+      console.error('Failed to delete appointment:', error);
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -301,6 +308,42 @@ const Appointments: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Elegant Confirm Cancel Modal */}
+      {confirmCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isCancelling && setConfirmCancel(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Cancel appointment?</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                This action cannot be undone. The selected appointment will be permanently cancelled.
+              </p>
+            </div>
+            <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3 bg-gray-50">
+              <button
+                onClick={() => setConfirmCancel(null)}
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Keep
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              >
+                {isCancelling ? 'Cancelling…' : 'Cancel appointment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

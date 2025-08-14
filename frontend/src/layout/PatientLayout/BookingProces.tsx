@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../Redux/hooks';
 import { fetchDoctors, getDoctorById } from '../../Redux/doctorSlice/doctorSlice';
@@ -7,7 +7,7 @@ import DateTime from './Booking/DateTime';
 import ConsultationTypeStep from './Booking/ConsultationTypeStep';
 import PatientInfo from './Booking/PatientInfo';
 import { Confirmation } from './Booking/Confirmation';
-import type { DoctorProfile } from '../../types/data/doctor';
+// Removed unused import of DoctorProfile
 import type { RootState } from '../../Redux/store';
 
 interface BookingData {
@@ -96,24 +96,8 @@ function App() {
     setBookingData({ ...bookingData, ...data });
   }, [bookingData]);
 
-  const canProceedToNextStep = () => {
-    switch (currentStep) {
-      case 1: // DateTime
-        return bookingData.date && bookingData.time;
-      case 2: // ConsultationType
-        return bookingData.consultationType;
-      case 3: // PatientInfo
-        return (
-          bookingData.patientInfo.fullName &&
-          bookingData.patientInfo.email &&
-          bookingData.patientInfo.phone &&
-          bookingData.patientInfo.reasonForVisit &&
-          bookingData.patientInfo.agreeToTerms
-        );
-      default:
-        return true;
-    }
-  };
+  // Helper reserved for future validation of steps
+  // canProceedToNextStep reserved for future validation logic
 
   const renderCurrentStep = () => {
     const doctor = doctors.find(d => d.id === parseInt(doctorId || '0'));
@@ -159,10 +143,12 @@ function App() {
     );
   }
 
+  //
+
   return (
     <div>
       <Navbar isAuthenticated={isAuthenticated} />
-      <div>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
         {renderCurrentStep()}
       </div>
     </div>

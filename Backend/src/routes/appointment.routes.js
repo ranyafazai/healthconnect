@@ -1,7 +1,7 @@
 import express from 'express';
 import appointmentController from '../controllers/appointment.controller.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { isDoctor, isPatient } from '../middlewares/roleCheck.js';
+// import { isDoctor, isPatient } from '../middlewares/roleCheck.js';
 
 const router = express.Router();
 

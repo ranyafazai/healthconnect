@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type FormEvent, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { fetchUserProfile, updateUserProfile, uploadProfilePhoto } from "../../../Redux/userSlice/userSlice";
 import type { RootState } from "../../../Redux/store";
+import { getUploadedFileUrl } from "../../../utils/fileUrl";
 
 export default function BasicInfo() {
   const dispatch = useAppDispatch();
@@ -25,10 +26,13 @@ export default function BasicInfo() {
       setFirstName(profile.doctorProfile?.firstName || "");
       setLastName(profile.doctorProfile?.lastName || "");
       setBio(profile.doctorProfile?.professionalBio || "");
-      if (profile.files && profile.files.length > 0) {
-        const photoFile = profile.files.find(file => file.type === 'PHOTO');
+      const relatedPhotoUrl = profile.doctorProfile?.photo?.url || profile.patientProfile?.photo?.url;
+      if (relatedPhotoUrl) {
+        setPhoto(relatedPhotoUrl);
+      } else if (profile.files && profile.files.length > 0) {
+        const photoFile: any = profile.files.find((f: any) => (f.fileType || f.type) === 'PROFILE_PICTURE');
         if (photoFile) {
-          setPhoto(photoFile.url);
+          setPhoto(photoFile.url || photoFile.path || null);
         }
       }
     }
@@ -55,12 +59,11 @@ export default function BasicInfo() {
     setIsSubmitting(true);
     try {
       const updateData = {
-        doctorProfile: {
-          firstName,
-          lastName,
-          professionalBio: bio,
-        }
-      };
+        // Narrow update to fields the backend expects and accepts on partial update
+        firstName,
+        lastName,
+        professionalBio: bio,
+      } as any;
       
       await dispatch(updateUserProfile(updateData)).unwrap();
       // Refresh profile data
@@ -99,7 +102,7 @@ export default function BasicInfo() {
           <div className="w-24 h-24 bg-cyan-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
             {photo ? (
               <img
-                src={photo}
+                src={getUploadedFileUrl({ url: photo })}
                 alt="Profile"
                 className="rounded-full w-24 h-24 object-cover"
               />

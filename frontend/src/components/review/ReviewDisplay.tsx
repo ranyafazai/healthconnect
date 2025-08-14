@@ -1,4 +1,4 @@
-import React from 'react';
+// No React default import required
 import { Star } from 'lucide-react';
 import type { Review } from '../../types/data/review';
 

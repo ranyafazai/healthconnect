@@ -1,17 +1,66 @@
 import { prisma } from '../app.js';
+import socketConfig from '../config/socket.js';
 import { 
   successResponse, 
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
-  reviewResponse,
-  listResponse,
-  paginatedResponse,
+  // listResponse,
   forbiddenResponse
 } from '../utils/responseFormatter.js';
 
 class ReviewController {
+  // Get review stats for a doctor
+  async getDoctorReviewStats(req, res) {
+    try {
+      const { doctorId } = req.params;
+      if (!doctorId) {
+        return res.status(400).json(errorResponse('Doctor ID is required', 400));
+      }
+
+      const id = parseInt(doctorId);
+
+      // Aggregate stats
+      const [totalReviews, avgResult, distribution] = await Promise.all([
+        prisma.review.count({ where: { doctorId: id } }),
+        prisma.review.aggregate({
+          _avg: { rating: true },
+          where: { doctorId: id },
+        }),
+        prisma.review.groupBy({
+          by: ['rating'],
+          _count: { rating: true },
+          where: { doctorId: id },
+        })
+      ]);
+
+      const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      distribution.forEach((row) => {
+        ratingDistribution[row.rating] = row._count.rating;
+      });
+
+      const averageRating = Number(avgResult._avg.rating || 0);
+
+      // Basic analysis placeholder (can be expanded later)
+      const analysis = {
+        topFeedback: {},
+        commonKeywords: [],
+        sentiment: averageRating >= 4 ? 'positive' : averageRating >= 3 ? 'mixed' : 'negative',
+      };
+
+      const stats = {
+        totalReviews,
+        averageRating,
+        ratingDistribution,
+        analysis,
+      };
+
+      return res.json(successResponse(stats, 'Doctor review stats retrieved successfully'));
+    } catch (error) {
+      console.error('Get doctor review stats error:', error);
+      return res.status(500).json(serverErrorResponse('Failed to get doctor review stats'));
+    }
+  }
   // Create a review
   async createReview(req, res) {
     try {
@@ -38,33 +87,62 @@ class ReviewController {
         }
       });
 
-      if (existingReview) {
-        return res.status(400).json(errorResponse('You have already reviewed this doctor', 400));
-      }
+      let resultReview;
+      let action = 'created';
 
-      const review = await prisma.review.create({
-        data: {
-          doctorId: parseInt(doctorId),
-          patientId: parseInt(patientId),
-          rating: parseInt(rating),
-          comment: comment || null,
-          appointmentId: appointmentId ? parseInt(appointmentId) : null
-        },
-        include: {
-          doctor: {
-            select: {
-              firstName: true,
-              lastName: true
-            }
+      if (existingReview) {
+        // Update existing review instead of returning 400
+        action = 'updated';
+        resultReview = await prisma.review.update({
+          where: { id: existingReview.id },
+          data: {
+            rating: parseInt(rating),
+            comment: comment || null,
+            appointmentId: appointmentId ? parseInt(appointmentId) : existingReview.appointmentId || null
           },
-          patient: {
-            select: {
-              firstName: true,
-              lastName: true
+          include: {
+            doctor: {
+              select: {
+                userId: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            patient: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
             }
           }
-        }
-      });
+        });
+      } else {
+        // Create a new review
+        resultReview = await prisma.review.create({
+          data: {
+            doctorId: parseInt(doctorId),
+            patientId: parseInt(patientId),
+            rating: parseInt(rating),
+            comment: comment || null,
+            appointmentId: appointmentId ? parseInt(appointmentId) : null
+          },
+          include: {
+            doctor: {
+              select: {
+                userId: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            patient: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        });
+      }
 
       // Update doctor's average rating
       const doctorReviews = await prisma.review.findMany({
@@ -79,15 +157,35 @@ class ReviewController {
       });
 
       // Create notification for doctor
-      await prisma.notification.create({
-        data: {
-          userId: review.doctor.userId,
-          type: 'REVIEW',
-          content: `New ${rating}-star review from ${review.patient.firstName} ${review.patient.lastName}`
-        }
-      });
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: resultReview.doctor.userId,
+            type: 'REVIEW',
+            content: action === 'created'
+              ? `New ${rating}-star review from ${resultReview.patient.firstName} ${resultReview.patient.lastName}`
+              : `Updated review: ${rating}-star from ${resultReview.patient.firstName} ${resultReview.patient.lastName}`
+          }
+        });
+      } catch (notifErr) {
+        console.error('Notification create error (review):', notifErr);
+      }
 
-      return res.json(createdResponse(review, 'Review created successfully'));
+      // Emit notification via socket if available
+      try {
+        const io = socketConfig.getIO();
+        const notificationNs = io.of('/notifications');
+        notificationNs.to(`user-${resultReview.doctor.userId}`).emit('new-notification', {
+          type: 'REVIEW',
+          content: action === 'created'
+            ? `New ${rating}-star review from ${resultReview.patient.firstName} ${resultReview.patient.lastName}`
+            : `Updated review: ${rating}-star from ${resultReview.patient.firstName} ${resultReview.patient.lastName}`
+        });
+      } catch (socketErr) {
+        console.error('Socket emit error (review notification):', socketErr);
+      }
+
+      return res.json(successResponse(resultReview, action === 'created' ? 'Review created successfully' : 'Review updated successfully'));
     } catch (error) {
       console.error('Create review error:', error);
       return res.status(500).json(serverErrorResponse('Failed to create review'));

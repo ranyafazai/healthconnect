@@ -4,7 +4,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   fileResponse,
   listResponse,
   paginatedResponse,
@@ -15,11 +14,15 @@ class FileController {
   // Upload file
   async uploadFile(req, res) {
     try {
-      const { url, fileType } = req.body;
       const ownerId = req.user.id;
+      const { fileType } = req.body;
 
-      if (!url || !fileType) {
-        return res.status(400).json(errorResponse('Missing required fields: url, fileType', 400));
+      if (!req.file) {
+        return res.status(400).json(errorResponse('No file uploaded', 400));
+      }
+
+      if (!fileType) {
+        return res.status(400).json(errorResponse('File type is required', 400));
       }
 
       // Validate file type
@@ -27,13 +30,63 @@ class FileController {
         return res.status(400).json(errorResponse('Invalid file type', 400));
       }
 
+      // Determine upload path based on file type
+      let uploadPath = '';
+      switch (fileType) {
+        case 'PROFILE_PICTURE':
+          uploadPath = `/uploads/avatars/${req.file.filename}`;
+          break;
+        case 'CONSULTATION_RECORDING':
+          uploadPath = `/uploads/consultation-recordings/${req.file.filename}`;
+          break;
+        case 'MEDICAL_DOCUMENT':
+          uploadPath = `/uploads/medical-records/${req.file.filename}`;
+          break;
+        case 'CHAT_MEDIA':
+          uploadPath = `/uploads/messages/${req.file.filename}`;
+          break;
+        case 'CERTIFICATION':
+          uploadPath = `/uploads/certifications/${req.file.filename}`;
+          break;
+        default:
+          uploadPath = `/uploads/others/${req.file.filename}`;
+      }
+
       const file = await prisma.file.create({
         data: {
           ownerId: parseInt(ownerId),
-          url,
+          url: uploadPath,
+          filename: req.file.filename,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
           fileType
         }
       });
+
+      // If this upload is a profile picture, automatically link it to profile
+      if (fileType === 'PROFILE_PICTURE') {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: parseInt(ownerId) },
+            include: { doctorProfile: true, patientProfile: true }
+          });
+          if (user?.doctorProfile?.id) {
+            await prisma.doctorProfile.update({
+              where: { id: user.doctorProfile.id },
+              data: { photoId: file.id }
+            });
+          }
+          if (user?.patientProfile?.id) {
+            await prisma.patientProfile.update({
+              where: { id: user.patientProfile.id },
+              data: { photoId: file.id }
+            });
+          }
+        } catch (e) {
+          console.error('Auto-link profile picture error:', e);
+        }
+      }
 
       return res.status(201).json(fileResponse(file));
     } catch (error) {

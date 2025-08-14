@@ -15,7 +15,7 @@ export const changePassword = (data: {
 export const uploadProfilePhoto = (file: File) => {
   const formData = new FormData();
   formData.append('photo', file);
-  return axios.post<{ data: { photoUrl: string } }>('/users/upload-photo', formData, {
+  return axios.post<{ data: { photoUrl: string; fileId: number } }>('/users/upload-photo', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

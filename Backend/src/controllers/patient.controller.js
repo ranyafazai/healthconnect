@@ -4,7 +4,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   patientResponse,
   listResponse,
   forbiddenResponse
@@ -189,8 +188,6 @@ class PatientController {
       }
 
       const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
       const [
         upcomingAppointments,

@@ -13,7 +13,8 @@ export const register = async (req, res, next) => {
     res.cookie('token', user.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost',
       maxAge: parseInt(process.env.JWT_EXPIRES_MS || '86400000'),
     });
     return res.status(201).json({ user: user.safeUser });
@@ -28,17 +29,31 @@ export const login = async (req, res, next) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password } = req.body;
+    console.log('Login attempt for:', email);
+    
     const user = await loginUser({ email, password });
+    console.log('Login successful for user:', user.safeUser.id);
 
     res.cookie('token', user.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost',
+      maxAge: parseInt(process.env.JWT_EXPIRES_MS || '86400000'),
+    });
+    
+    console.log('Cookie set successfully');
+    console.log('Cookie settings:', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost',
       maxAge: parseInt(process.env.JWT_EXPIRES_MS || '86400000'),
     });
 
     return res.json({ user: user.safeUser });
   } catch (err) {
+    console.error('Login error:', err);
     next(err);
   }
 };
@@ -48,7 +63,8 @@ export const logout = async (req, res) => {
     res.clearCookie('token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
     });
     
     res.json({ message: 'Logged out successfully' });

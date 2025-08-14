@@ -1,4 +1,4 @@
-import React from "react";
+// No React import needed
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useNavigate } from "react-router-dom";

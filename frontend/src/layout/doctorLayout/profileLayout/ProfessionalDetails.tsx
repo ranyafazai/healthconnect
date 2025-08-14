@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useAppDispatch, useAppSelector } from "../../../Redux/hooks";
 import { fetchUserProfile, updateUserProfile } from "../../../Redux/userSlice/userSlice";
+import { uploadCertification } from "../../../Api/file.api";
+import { addCertification, removeCertification } from "../../../Api/doctor.api";
 import type { RootState } from "../../../Redux/store";
 
 interface Certification {
@@ -22,6 +24,9 @@ export default function ProfessionalDetails() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedCert, setSelectedCert] = useState<Certification | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -36,11 +41,11 @@ export default function ProfessionalDetails() {
       setLicenseNumber(profile.doctorProfile.medicalLicense || "");
       
       if (profile.doctorProfile.certifications) {
-        setCertifications(profile.doctorProfile.certifications.map(cert => ({
+        setCertifications(profile.doctorProfile.certifications.map((cert: any) => ({
           id: cert.id,
-          title: cert.title,
-          institution: cert.institution,
-          year: cert.year.toString()
+          title: String(cert.title ?? ''),
+          institution: String(cert.institution ?? ''),
+          year: String(cert.year ?? '')
         })));
       }
     }
@@ -53,12 +58,10 @@ export default function ProfessionalDetails() {
     setIsSubmitting(true);
     try {
       const updateData = {
-        doctorProfile: {
-          specialization,
-          yearsExperience: parseInt(experience) || 0,
-          medicalLicense: licenseNumber,
-        }
-      };
+        specialization,
+        yearsExperience: parseInt(experience) || 0,
+        medicalLicense: licenseNumber,
+      } as any;
       
       await dispatch(updateUserProfile(updateData)).unwrap();
       // Refresh profile data
@@ -70,14 +73,93 @@ export default function ProfessionalDetails() {
     }
   };
 
-  const handleEdit = (id: number) => {
-    // TODO: Implement edit certification modal/form
-    alert(`Edit certification with id: ${id}`);
+  const handleEdit = async (certId: number) => {
+    try {
+      const doctorId = profile?.doctorProfile?.id;
+      if (!doctorId) return;
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          // 1) Upload new certification file
+          const uploadRes = await uploadCertification(file);
+          const uploadedFile = uploadRes.data?.data || uploadRes.data;
+
+          // 2) Remove existing certification link
+          await removeCertification(doctorId, certId);
+
+          // 3) Link the newly uploaded file as a certification
+          await addCertification(doctorId, uploadedFile.id);
+
+          // 4) Refresh profile to reflect changes
+          dispatch(fetchUserProfile());
+        } catch (err) {
+          console.error('Failed to replace certification:', err);
+        }
+      };
+      input.click();
+    } catch (err) {
+      console.error('Edit certification flow error:', err);
+    }
   };
 
-  const handleAdd = () => {
-    // TODO: Implement add certification modal/form
-    alert("Open add certification modal/form");
+  const handleAdd = async () => {
+    try {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          // 1) Upload file as CERTIFICATION
+          const uploadRes = await uploadCertification(file);
+          const uploadedFile = uploadRes.data?.data || uploadRes.data;
+
+          // 2) Link to doctor profile via backend endpoint
+          const doctorId = profile?.doctorProfile?.id;
+          if (!doctorId) return;
+          await addCertification(doctorId, uploadedFile.id);
+
+          // 3) Refresh profile
+          dispatch(fetchUserProfile());
+        } catch (err) {
+          console.error('Failed to add certification:', err);
+        }
+      };
+      input.click();
+    } catch (err) {
+      console.error('Certification flow error:', err);
+    }
+  };
+
+  const handleDeleteClick = (cert: Certification) => {
+    setSelectedCert(cert);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedCert || !profile?.doctorProfile?.id) return;
+    try {
+      setIsDeleting(true);
+      await removeCertification(profile.doctorProfile.id, selectedCert.id);
+      setDeleteModalOpen(false);
+      setSelectedCert(null);
+      dispatch(fetchUserProfile());
+    } catch (err) {
+      console.error('Failed to delete certification:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteModalOpen(false);
+    setSelectedCert(null);
   };
 
   if (loading) {
@@ -175,13 +257,22 @@ export default function ProfessionalDetails() {
                     {cert.institution} • {cert.year}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleEdit(cert.id)}
-                  className="text-cyan-600 text-sm hover:underline"
-                >
-                  Edit
-                </button>
+						<div className="flex items-center gap-3">
+							<button
+								type="button"
+								onClick={() => handleEdit(cert.id)}
+								className="text-cyan-600 text-sm hover:underline"
+							>
+								Edit
+							</button>
+							<button
+								type="button"
+								onClick={() => handleDeleteClick(cert)}
+								className="text-red-600 text-sm hover:underline"
+							>
+								Delete
+							</button>
+						</div>
               </div>
             ))
           ) : (
@@ -214,6 +305,40 @@ export default function ProfessionalDetails() {
           {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+		{/* Delete Confirmation Modal */}
+		{deleteModalOpen && selectedCert && (
+			<div className="fixed inset-0 z-50 flex items-center justify-center">
+				<div className="absolute inset-0 bg-black/50" onClick={handleCancelDelete} />
+				<div className="relative bg-white w-full max-w-md mx-4 rounded-lg shadow-lg p-6">
+					<h3 className="text-lg font-semibold text-gray-900 mb-2">Delete certification?</h3>
+					<p className="text-sm text-gray-600 mb-4">
+						Are you sure you want to remove this certification from your profile?
+					</p>
+					<div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
+						<p className="font-medium text-gray-800">{selectedCert.title || 'Untitled Certification'}</p>
+						<p className="text-sm text-gray-500">{selectedCert.institution || 'Institution'}{selectedCert.year ? ` • ${selectedCert.year}` : ''}</p>
+					</div>
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={handleCancelDelete}
+							className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-100"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={handleConfirmDelete}
+							disabled={isDeleting}
+							className={`px-4 py-2 rounded-md text-white ${isDeleting ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+						>
+							{isDeleting ? 'Deleting...' : 'Delete'}
+						</button>
+					</div>
+				</div>
+			</div>
+		)}
     </form>
   );
 }

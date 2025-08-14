@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import type { RootState } from '../../Redux/store';
 import { fetchUserSettings, updateUserSettingsAsync } from '../../Redux/userSettingsSlice/userSettingsSlice';
-import { changePassword, exportUserData, deleteAccount } from '../../Api/userSettings.api';
+import { changePassword, deleteAccount } from '../../Api/userSettings.api';
 import { useNavigate } from 'react-router-dom';
 import { clearAuth } from '../../Redux/authSlice/authSlice';
 import { fetchPatientProfile } from '../../Redux/patientSlice/patientSlice';
@@ -13,8 +13,8 @@ import {
   Shield, 
   Eye, 
   Lock, 
-  Smartphone, 
-  Mail, 
+  
+  
   Globe, 
   Trash2,
   Save,
@@ -131,13 +131,13 @@ export default function Settings() {
   };
 
   const handleSaveSettings = async () => {
-    try {
-      const allSettings = {
-        ...notificationSettings,
-        ...privacySettings,
-        ...securitySettings
-      };
+    const allSettings = {
+      ...notificationSettings,
+      ...privacySettings,
+      ...securitySettings
+    };
 
+    try {
       await dispatch(updateUserSettingsAsync(allSettings)).unwrap();
       setIsEditing(false);
       
@@ -187,7 +187,7 @@ export default function Settings() {
           const appointmentsResponse = await getAppointmentsByPatient(patient.id);
           setAppointments(appointmentsResponse.data?.data?.data || []);
         } catch (error) {
-          console.log('Could not fetch appointments:', error);
+          // Error handling for appointments fetch
         }
       }
       

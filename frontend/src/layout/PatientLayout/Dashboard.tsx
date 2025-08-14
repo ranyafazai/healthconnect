@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../Redux/hooks";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   MessageSquare,
   CheckCircle,
-  FileText,
   Video,
   User,
   Info
@@ -22,26 +21,9 @@ export default function Dashboard() {
   
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { appointments, loading: appointmentsLoading } = useAppSelector((state: RootState) => state.appointment);
-  const { notifications } = useAppSelector((state: RootState) => state.notification);
   const { messages, loadingMessages: messagesLoading } = useAppSelector((state: RootState) => state.chat);
 
-  // Debug logging for initial render
-  console.log('Dashboard initial render - user:', user);
-  console.log('Dashboard initial render - appointments:', appointments);
-  console.log('Dashboard initial render - messages:', messages);
 
-  // Component lifecycle debugging
-  useEffect(() => {
-    console.log('Dashboard mounted');
-    return () => {
-      console.log('Dashboard unmounted');
-    };
-  }, []);
-
-  // Debug logging
-  console.log('Dashboard render - appointments:', appointments);
-  console.log('Dashboard render - appointments type:', typeof appointments);
-  console.log('Dashboard render - appointmentsLoading:', appointmentsLoading);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -53,25 +35,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user?.patientProfile?.id) {
-      console.log('Dashboard useEffect - dispatching fetchAppointmentsByPatient for patient profile:', user.patientProfile.id);
       dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
       dispatch(fetchNotifications());
     }
   }, [dispatch, user?.patientProfile?.id]);
 
-  // Debug useEffect to monitor state changes
-  useEffect(() => {
-    console.log('Dashboard state change - appointments:', appointments);
-    console.log('Dashboard state change - appointmentsLoading:', appointmentsLoading);
-    console.log('Dashboard state change - messages:', messages);
-    console.log('Dashboard state change - messagesLoading:', messagesLoading);
-  }, [appointments, appointmentsLoading, messages, messagesLoading]);
+  // State change tracing removed
 
   // Refresh appointments when user navigates to dashboard
   useEffect(() => {
     const handleFocus = () => {
       if (user?.patientProfile?.id) {
-        console.log('Dashboard focus - refreshing appointments for patient profile:', user.patientProfile.id);
         dispatch(fetchAppointmentsByPatient(user.patientProfile.id));
       }
     };
@@ -103,7 +77,6 @@ export default function Dashboard() {
   const unreadMessages = Array.isArray(messages) 
     ? messages.filter((msg: Message) => !msg.isRead) 
     : [];
-  const healthRecords = 8; // Mock data for now - would need to fetch from medical records API
 
   // Show loading state while data is being fetched
   if (appointmentsLoading || messagesLoading) {
@@ -121,7 +94,6 @@ export default function Dashboard() {
 
   // Additional safety check for appointments and messages
   if (!Array.isArray(appointments) || !Array.isArray(messages)) {
-    console.warn('Dashboard: appointments or messages is not an array:', { appointments, messages });
     return (
       <div className="flex-1 bg-gray-50 p-6">
         <div className="flex items-center justify-center min-h-64">
@@ -159,12 +131,6 @@ export default function Dashboard() {
       icon: <MessageSquare className="text-yellow-500" size={20} />,
       color: "text-yellow-500"
     },
-    { 
-      title: "Health Records", 
-      value: healthRecords, 
-      icon: <FileText className="text-purple-500" size={20} />,
-      color: "text-purple-500"
-    },
   ];
 
   const getUserName = () => {
@@ -194,6 +160,17 @@ export default function Dashboard() {
       }))
     : [];
 
+  const formatTimeAgo = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    if (diffInHours < 48) return '1 day ago';
+    return `${Math.floor(diffInHours / 24)} days ago`;
+  };
+
   // Get recent messages with doctor details
   const recentMessagesData = Array.isArray(messages) 
     ? messages.slice(0, 2).map((message: Message) => ({
@@ -209,17 +186,6 @@ export default function Dashboard() {
         unread: !message.isRead
       }))
     : [];
-
-  const formatTimeAgo = (date: Date | string) => {
-    const dateObj = date instanceof Date ? date : new Date(date);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - dateObj.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInHours < 48) return '1 day ago';
-    return `${Math.floor(diffInHours / 24)} days ago`;
-  };
 
   return (
     <div className="flex-1 bg-gray-50 p-6">

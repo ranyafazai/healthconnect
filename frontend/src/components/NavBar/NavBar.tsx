@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../ui/button";
 import { ImAidKit } from "react-icons/im";
 import { useNavigate } from "react-router-dom";
 import NotificationDropdown from "../ui/NotificationDropdown";
 import { useAppSelector } from "../../Redux/hooks";
 import type { RootState } from "../../Redux/store";
+import { ChevronDown, Menu } from "lucide-react";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -12,8 +13,31 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAppSelector((state: RootState) => state.auth);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside or resizing window
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    const handleResize = () => {
+      setDropdownOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const getUserInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -34,21 +58,74 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
           <span className="font-bold text-xl text-gray-800">HealthConnect</span>
         </div>
 
-        {/* Desktop Navigation - Hidden on mobile */}
-        <div className="hidden md:flex items-center gap-8">
-          {!isAuthenticated && (
-            <>
-              <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors">Home</a>
-              <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors">How It Works</a>
-              <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors">About</a>
-            </>
-          )}
-          {!isAuthenticated && (
-            <Button className="bg-[#008CBA] hover:bg-[#007A9A] text-white px-6 py-2 rounded-full" onClick={() => navigate("/auth/signin")}>
+                 {/* Desktop Navigation - Hidden on mobile and medium screens when authenticated */}
+         <div className="hidden lg:flex items-center gap-8">
+           {!isAuthenticated && !user && (
+             <>
+               <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors">Home</a>
+               <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors">How It Works</a>
+               <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors">About</a>
+             </>
+           )}
+           {!isAuthenticated && !user && (
+             <Button className="bg-[#008CBA] hover:bg-[#007A9A] text-white px-6 py-2 rounded-full" onClick={() => navigate("/auth/signin")}>
+               Sign In
+             </Button>
+           )}
+         </div>
+
+                 {/* Medium Screen Navigation - Dropdown for non-authenticated users */}
+         {!isAuthenticated && !user && (
+           <div className="hidden md:flex lg:hidden items-center gap-4">
+            {/* Navigation Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 px-4 py-2 text-gray-900 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <Menu className="w-4 h-4" />
+                <span>Menu</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+                             {dropdownOpen && (
+                 <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                   <div className="py-2">
+                     <a 
+                       href="/" 
+                       className="block px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                       onClick={() => setDropdownOpen(false)}
+                     >
+                       Home
+                     </a>
+                     <a 
+                       href="/how-it-works" 
+                       className="block px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                       onClick={() => setDropdownOpen(false)}
+                     >
+                       How It Works
+                     </a>
+                     <a 
+                       href="/about" 
+                       className="block px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                       onClick={() => setDropdownOpen(false)}
+                     >
+                       About
+                     </a>
+                   </div>
+                 </div>
+               )}
+            </div>
+            
+            {/* Sign In Button */}
+            <Button 
+              className="bg-[#008CBA] hover:bg-[#007A9A] text-white px-6 py-2 rounded-full" 
+              onClick={() => navigate("/auth/signin")}
+            >
               Sign In
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* User Info and Notifications - Only show when authenticated */}
         {isAuthenticated && user && (
@@ -82,7 +159,8 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
           </div>
         )}
 
-        {/* Mobile Hamburger */}
+        {/* Mobile Hamburger - Only on small screens */}
+        {!isAuthenticated && !user && (
         <div className="md:hidden">
           <button
             className="p-2 rounded focus:outline-none focus:ring-2 focus:ring-[#007A9A]"
@@ -94,25 +172,26 @@ export function Navbar({ isAuthenticated = false }: NavbarProps) {
             <span className="block w-6 h-0.5 bg-gray-800"></span>
           </button>
         </div>
+        )}
       </nav>
 
-      {/* Mobile Sidebar Menu */}
-      {menuOpen && (
-        <div className="md:hidden absolute top-32 left-0 w-64 bg-white border border-gray-200 shadow-lg z-50">
-          <div className="flex flex-col p-6 space-y-4">
-            {!isAuthenticated && (
-              <>
-                <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors py-2">Home</a>
-                <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors py-2">How It Works</a>
-                <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors py-2">About</a>
-              </>
-            )}
-            {!isAuthenticated && (
-              <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-2 rounded-full mt-4" onClick={() => navigate("/auth/signin")}>
-                Sign In
-              </Button>
-            )}
-          </div>
+      {/* Mobile Sidebar Menu - Only on small screens */}
+      {menuOpen && !isAuthenticated && !user && (
+        <div className="md:hidden absolute top-16 right-2  w-64 bg-white border border-gray-200 shadow-lg z-50">
+                     <div className="flex flex-col p-6 space-y-4">
+             {!isAuthenticated && !user && (
+               <>
+                 <a href="/" className="text-gray-900 hover:text-gray-700 transition-colors py-2">Home</a>
+                 <a href="/how-it-works" className="text-gray-900 hover:text-gray-700 transition-colors py-2">How It Works</a>
+                 <a href="/about" className="text-gray-900 hover:text-gray-700 transition-colors py-2">About</a>
+               </>
+             )}
+             {!isAuthenticated && !user && (
+               <Button className="w-full bg-[#008CBA] hover:bg-[#007A9A] text-white py-2 rounded-full mt-4" onClick={() => navigate("/auth/signin")}>
+                 Sign In
+               </Button>
+             )}
+           </div>
         </div>
       )}
     </div>

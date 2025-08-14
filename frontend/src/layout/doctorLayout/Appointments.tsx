@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Filter, Search, Eye, Edit, Trash2, RefreshCw, TrendingUp, AlertCircle, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, Phone, Filter, Search, Eye, RefreshCw, TrendingUp, AlertCircle, CheckCircle, Stethoscope } from 'lucide-react';
 import type { RootState } from '../../Redux/store';
-import { fetchAppointmentsByDoctor, updateAppointmentStatus, deleteAppointment } from '../../Redux/appointmentSlice/appointmentSlice';
+import { fetchAppointmentsByDoctor, updateAppointmentStatus } from '../../Redux/appointmentSlice/appointmentSlice';
 import type { Appointment, AppointmentStatus } from '../../types/data/appointment';
 
 const Appointments: React.FC = () => {
@@ -159,14 +160,7 @@ const Appointments: React.FC = () => {
     return weeks;
   };
 
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
+  // Removed unused formatDate
 
   const formatTime = (dateString: string): string => {
     return new Date(dateString).toLocaleTimeString([], { 
@@ -203,15 +197,7 @@ const Appointments: React.FC = () => {
     }
   };
 
-  const handleDeleteAppointment = async (appointmentId: number) => {
-    if (window.confirm('Are you sure you want to cancel this appointment?')) {
-      try {
-        await dispatch(deleteAppointment(appointmentId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete appointment:', error);
-      }
-    }
-  };
+  // Delete appointment is handled via status updates in this view
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {

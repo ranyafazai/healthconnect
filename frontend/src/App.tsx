@@ -1,5 +1,4 @@
-
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "./Redux/hooks";
 import type { RootState } from "./Redux/store";
@@ -15,6 +14,8 @@ import BookingProces from "./layout/PatientLayout/BookingProces";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { ReviewModalProvider } from "./contexts/ReviewModalContext";
+import LocationUpdater from "./components/location/LocationUpdater";
 
 
 // Component to handle authentication status checking
@@ -29,29 +30,12 @@ function AuthRedirect() {
       return;
     }
 
-    // Clear any stale authentication state on app startup
-    const clearStaleAuth = () => {
-      const authState = localStorage.getItem('authState');
-      if (authState) {
-        try {
-          const parsed = JSON.parse(authState);
-          // If the stored state is older than 24 hours, clear it
-          if (parsed.timestamp && Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem('authState');
-            return;
-          }
-        } catch (error) {
-          localStorage.removeItem('authState');
-        }
-      }
-    };
-
-    clearStaleAuth();
+    // No need to clear localStorage since we're using cookie-based auth
+    // The backend cookie is the source of truth
     
     // Check authentication status only once when component mounts
-    // and only if we don't have authentication data but have a token
-    const token = localStorage.getItem('token');
-    if (!isAuthenticated && !loading && token) {
+    // Since we're using cookie-based auth, we can always check
+    if (!isAuthenticated && !loading) {
       dispatch(checkAuthStatus());
     }
     
@@ -67,12 +51,12 @@ function AuthRedirect() {
 }
 
 function App() {
-  console.log('App component rendered at:', new Date().toISOString());
-  
   return (
-    <BrowserRouter>
-      <AuthRedirect />
-      <Routes>        
+    <ReviewModalProvider>
+      <BrowserRouter>
+        <AuthRedirect />
+        <LocationUpdater />
+        <Routes>        
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/*" element={<LandingPage />} />
@@ -125,7 +109,8 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ReviewModalProvider>
   );
 }
 

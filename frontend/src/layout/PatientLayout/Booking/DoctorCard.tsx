@@ -1,6 +1,7 @@
-import React from "react";
-import { Star } from "lucide-react";
+// No React import needed
+// import { Star } from "lucide-react";
 import type { DoctorProfile } from '../../../types/data/doctor';
+import { getUploadedFileUrl } from '../../../utils/fileUrl';
 
 interface DoctorCardProps {
   doctor?: DoctorProfile;
@@ -30,8 +31,18 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
   return (
     <div style={{ backgroundColor: "#F8FCFF", borderRadius: "10px", padding: "20px", margin: "40px", boxShadow: "0 7px 4px rgba(0,0,0,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <div style={{ display: "flex", gap: "25px", alignItems: "center" }}>
-        <div style={{ marginLeft: "30px", backgroundColor: "#008CBA", color: "white", width: "100px", height: "100px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "bold" }}>
-          {getDoctorInitials(doctor)}
+        <div style={{ marginLeft: "30px", width: "100px", height: "100px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "bold", overflow: "hidden" }}>
+          {doctor.photo ? (
+            <img
+              src={getUploadedFileUrl(doctor.photo)}
+              alt={`${doctor.firstName} ${doctor.lastName}`}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{ backgroundColor: "#008CBA", color: "white", width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "bold" }}>
+              {getDoctorInitials(doctor)}
+            </div>
+          )}
         </div>
         <div>
           <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#333" }}>

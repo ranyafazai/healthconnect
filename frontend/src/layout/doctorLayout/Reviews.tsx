@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
 import { Star } from 'lucide-react';
 import type { RootState } from '../../Redux/store';

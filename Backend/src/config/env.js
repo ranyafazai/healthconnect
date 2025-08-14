@@ -138,7 +138,7 @@ export const validateEnv = () => {
     }
   }
   
-  console.log('✅ Environment configuration validated');
+
 };
 
 export default config;

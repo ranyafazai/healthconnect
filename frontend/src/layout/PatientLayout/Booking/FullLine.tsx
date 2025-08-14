@@ -1,4 +1,4 @@
-import React from 'react';
+// No React default import required
 
 interface FullLineProps {
   currentStep: number;

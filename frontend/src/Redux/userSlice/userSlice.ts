@@ -61,7 +61,7 @@ const userSlice = createSlice({
     clearProfile: (state) => {
       state.profile = null;
     },
-    updateProfilePhoto: (state, action: PayloadAction<string>) => {
+    updateProfilePhoto: (_state, _action: PayloadAction<string>) => {
       // Photo URL will be stored in the files array or handled by the backend
       // This is just for optimistic UI updates
     },
@@ -88,7 +88,7 @@ const userSlice = createSlice({
         }
       })
       // Upload photo
-      .addCase(uploadProfilePhoto.fulfilled, (state, action) => {
+      .addCase(uploadProfilePhoto.fulfilled, (_state, _action) => {
         // Photo URL will be handled by the backend and reflected in the files array
         // This is just for optimistic UI updates
       });

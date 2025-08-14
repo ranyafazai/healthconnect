@@ -66,15 +66,13 @@ export default function ContactInfo() {
     try {
       const updateData = {
         email: formData.email,
-        doctorProfile: {
-          phoneNumber: formData.phone,
-          officeAddress: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zip,
-          emergencyContact: formData.emergencyContact,
-        }
-      };
+        phoneNumber: formData.phone,
+        officeAddress: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zip,
+        emergencyContact: formData.emergencyContact,
+      } as any;
       
       await dispatch(updateUserProfile(updateData)).unwrap();
       // Refresh profile data

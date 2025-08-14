@@ -4,7 +4,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   doctorResponse,
   listResponse
 } from '../utils/responseFormatter.js';
@@ -13,7 +12,7 @@ class DoctorController {
   // Get all doctors
   async getAllDoctors(req, res) {
     try {
-      const { specialization, rating, availability } = req.query;
+      const { specialization, rating } = req.query;
       
       let whereClause = {};
       
@@ -120,83 +119,7 @@ class DoctorController {
         };
       }
 
-      // Filter by availability (simplified implementation)
-      if (availability && availability !== 'Any Availability') {
-        const now = new Date();
-        const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        
-        // Map day numbers to day names
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const currentDayName = dayNames[currentDay];
-        
-        if (availability === 'Available Today') {
-          // Check if doctor has available slots today
-          whereClause.AND = [
-            {
-              availability: {
-                path: `$.${currentDayName}`,
-                not: null
-              }
-            }
-          ];
-        } else if (availability === 'Available Now') {
-          // Check if doctor has slots today (time-based filtering will be done in frontend)
-          whereClause.AND = [
-            {
-              availability: {
-                path: `$.${currentDayName}`,
-                not: null
-              }
-            }
-          ];
-        } else if (availability === 'Available Tomorrow') {
-          const tomorrow = (currentDay + 1) % 7;
-          const tomorrowName = dayNames[tomorrow];
-          
-          whereClause.AND = [
-            {
-              availability: {
-                path: `$.${tomorrowName}`,
-                not: null
-              }
-            }
-          ];
-        } else if (availability === 'Available This Week') {
-          // Check if doctor has any availability in the next 7 days
-          const weekDays = [];
-          for (let i = 0; i < 7; i++) {
-            const dayIndex = (currentDay + i) % 7;
-            weekDays.push(dayNames[dayIndex]);
-          }
-          
-          whereClause.OR = weekDays.map(dayName => ({
-            availability: {
-              path: `$.${dayName}`,
-              not: null
-            }
-          }));
-        } else if (availability === 'Available Next Week') {
-          // Check if doctor has any availability in the next 7-14 days
-          // Calculate actual dates for next week (7-13 days from now)
-          const nextWeekDays = [];
-          for (let i = 7; i < 14; i++) {
-            const futureDate = new Date();
-            futureDate.setDate(futureDate.getDate() + i);
-            const dayIndex = futureDate.getDay();
-            const dayName = dayNames[dayIndex];
-            if (!nextWeekDays.includes(dayName)) {
-              nextWeekDays.push(dayName);
-            }
-          }
-          
-          whereClause.OR = nextWeekDays.map(dayName => ({
-            availability: {
-              path: `$.${dayName}`,
-              not: null
-            }
-          }));
-        }
-      }
+      // Note: Availability filtering is applied after fetching due to mixed JSON shapes
 
       // Sorting
       switch (sortBy) {
@@ -222,43 +145,116 @@ class DoctorController {
           orderBy = { firstName: 'asc' };
       }
 
-      // Pagination
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-
-      const [doctors, totalCount] = await Promise.all([
-        prisma.doctorProfile.findMany({
-          where: whereClause,
-          orderBy,
-          skip,
-          take: parseInt(limit),
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true
-              }
-            },
-            photo: true,
-            reviews: {
-              include: {
-                patient: {
-                  select: {
-                    firstName: true,
-                    lastName: true
-                  }
+      // Fetch candidates without availability constraint
+      const candidates = await prisma.doctorProfile.findMany({
+        where: whereClause,
+        orderBy,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true
+            }
+          },
+          photo: true,
+          reviews: {
+            include: {
+              patient: {
+                select: {
+                  firstName: true,
+                  lastName: true
                 }
               }
             }
           }
-        }),
-        prisma.doctorProfile.count({
-          where: whereClause
-        })
-      ]);
+        }
+      });
 
-      const totalPages = Math.ceil(totalCount / parseInt(limit));
+      // Normalize day slots helper
+      const dayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      const toMinutes = (hhmm) => {
+        if (!hhmm || typeof hhmm !== 'string') return -1;
+        const [h, m] = hhmm.split(':').map((n) => parseInt(n, 10));
+        if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+        return h * 60 + m;
+      };
+      const normalizeDaySlots = (availabilityObj, dayKey) => {
+        if (!availabilityObj) return [];
+        const val = availabilityObj[dayKey];
+        if (!val) return [];
+        const slots = [];
+        if (Array.isArray(val)) {
+          val.forEach((range) => {
+            if (typeof range === 'string' && range.includes('-')) {
+              const [s, e] = range.split('-');
+              const sMin = toMinutes(s);
+              const eMin = toMinutes(e);
+              if (sMin >= 0 && eMin > sMin) slots.push({ sMin, eMin });
+            }
+          });
+          return slots;
+        }
+        if (typeof val === 'object' && val?.slots && Array.isArray(val.slots)) {
+          val.slots.forEach((slot) => {
+            if (slot?.start && slot?.end) {
+              const sMin = toMinutes(String(slot.start));
+              const eMin = toMinutes(String(slot.end));
+              if (sMin >= 0 && eMin > sMin) slots.push({ sMin, eMin });
+            }
+          });
+          return slots;
+        }
+        if (typeof val === 'object' && val?.available && Array.isArray(val.hours)) {
+          val.hours.forEach((range) => {
+            if (typeof range === 'string' && range.includes('-')) {
+              const [s, e] = range.split('-');
+              const sMin = toMinutes(s);
+              const eMin = toMinutes(e);
+              if (sMin >= 0 && eMin > sMin) slots.push({ sMin, eMin });
+            }
+          });
+          return slots;
+        }
+        return [];
+      };
 
-      return res.json(listResponse(doctors, 'Doctors search completed successfully', totalCount));
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      const matchesAvailability = (availabilityFilter, availabilityObj) => {
+        if (!availabilityFilter || availabilityFilter === 'Any Availability') return true;
+        const todayKey = dayKeys[currentDay];
+        if (availabilityFilter === 'Available Today') {
+          return normalizeDaySlots(availabilityObj, todayKey).length > 0;
+        }
+        if (availabilityFilter === 'Available Now') {
+          const slots = normalizeDaySlots(availabilityObj, todayKey);
+          return slots.some((s) => currentMin >= s.sMin && currentMin <= s.eMin);
+        }
+        if (availabilityFilter === 'Available Tomorrow') {
+          const tomorrowKey = dayKeys[(currentDay + 1) % 7];
+          return normalizeDaySlots(availabilityObj, tomorrowKey).length > 0;
+        }
+        if (availabilityFilter === 'Available This Week') {
+          for (let i = 0; i < 7; i++) {
+            const key = dayKeys[(currentDay + i) % 7];
+            if (normalizeDaySlots(availabilityObj, key).length > 0) return true;
+          }
+          return false;
+        }
+        if (availabilityFilter === 'Available Next Week') {
+          for (let i = 7; i < 14; i++) {
+            const key = dayKeys[(currentDay + i) % 7];
+            if (normalizeDaySlots(availabilityObj, key).length > 0) return true;
+          }
+          return false;
+        }
+        return true;
+      };
+
+      const filtered = candidates.filter((d) => matchesAvailability(availability, d.availability));
+
+      return res.json(listResponse(filtered, 'Doctors search completed successfully', filtered.length));
     } catch (error) {
       console.error('Search doctors error:', error);
       return res.status(500).json(serverErrorResponse('Failed to search doctors'));
@@ -595,6 +591,97 @@ class DoctorController {
     } catch (error) {
       console.error('Get doctor availability error:', error);
       return res.status(500).json(serverErrorResponse('Failed to get doctor availability'));
+    }
+  }
+
+  // Add a certification to the doctor's profile
+  async addCertification(req, res) {
+    try {
+      const { id } = req.params; // doctor profile id
+      const { fileId } = req.body;
+
+      if (!id || !fileId) {
+        return res.status(400).json(errorResponse('Doctor ID and fileId are required', 400));
+      }
+
+      // Ensure the authenticated doctor can only modify their own profile
+      const doctorProfileId = req.doctorProfile?.id;
+      if (!doctorProfileId || parseInt(id) !== doctorProfileId) {
+        return res.status(403).json(errorResponse('Access denied. You can only modify your own certifications.', 403));
+      }
+
+      // Validate file exists and belongs to the current user, and is CERTIFICATION type
+      const file = await prisma.file.findUnique({ where: { id: parseInt(fileId) } });
+      if (!file) {
+        return res.status(404).json(notFoundResponse('File not found'));
+      }
+      if (file.ownerId !== req.user.id) {
+        return res.status(403).json(errorResponse('Access denied. File does not belong to you.', 403));
+      }
+      if (file.fileType !== 'CERTIFICATION') {
+        return res.status(400).json(errorResponse('Invalid file type. Expected CERTIFICATION.', 400));
+      }
+
+      // Create link if not exists
+      const existing = await prisma.doctorCertification.findFirst({
+        where: { doctorProfileId: parseInt(id), fileId: parseInt(fileId) }
+      });
+      if (existing) {
+        // Idempotent: return existing with file included
+        const existingWithFile = await prisma.doctorCertification.findUnique({
+          where: { id: existing.id },
+          include: { file: true }
+        });
+        return res.json(successResponse(existingWithFile, 'Certification already linked'));
+      }
+
+      const certification = await prisma.doctorCertification.create({
+        data: {
+          doctorProfileId: parseInt(id),
+          fileId: parseInt(fileId)
+        },
+        include: { file: true }
+      });
+
+      return res.status(201).json(successResponse(certification, 'Certification added successfully'));
+    } catch (error) {
+      console.error('Add certification error:', error);
+      return res.status(500).json(serverErrorResponse('Failed to add certification'));
+    }
+  }
+
+  // Remove a certification from the doctor's profile
+  async removeCertification(req, res) {
+    try {
+      const { id, certId } = req.params; // doctor profile id and certification id
+
+      if (!id || !certId) {
+        return res.status(400).json(errorResponse('Doctor ID and certification ID are required', 400));
+      }
+
+      // Ensure the authenticated doctor can only modify their own profile
+      const doctorProfileId = req.doctorProfile?.id;
+      if (!doctorProfileId || parseInt(id) !== doctorProfileId) {
+        return res.status(403).json(errorResponse('Access denied. You can only modify your own certifications.', 403));
+      }
+
+      const certification = await prisma.doctorCertification.findUnique({
+        where: { id: parseInt(certId) },
+        include: { file: true, doctorProfile: true }
+      });
+      if (!certification) {
+        return res.status(404).json(notFoundResponse('Certification not found'));
+      }
+      if (certification.doctorProfileId !== parseInt(id)) {
+        return res.status(403).json(errorResponse('Access denied. Certification does not belong to this profile.', 403));
+      }
+
+      await prisma.doctorCertification.delete({ where: { id: parseInt(certId) } });
+
+      return res.json(successResponse(null, 'Certification removed successfully'));
+    } catch (error) {
+      console.error('Remove certification error:', error);
+      return res.status(500).json(serverErrorResponse('Failed to remove certification'));
     }
   }
 }

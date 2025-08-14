@@ -5,6 +5,9 @@ import { isPatient } from '../middlewares/roleCheck.js';
 
 const router = express.Router();
 
+// Get doctor review stats
+router.get('/doctor/:doctorId/stats', reviewController.getDoctorReviewStats);
+
 // Get reviews by doctor ID
 router.get('/doctor/:doctorId', reviewController.getReviewsByDoctor);
 

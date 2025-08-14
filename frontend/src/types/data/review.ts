@@ -1,4 +1,3 @@
-import type { DoctorProfile } from './doctor';
 import type { PatientProfile } from './patient';
 
 export interface Review {
@@ -11,6 +10,7 @@ export interface Review {
   createdAt: Date;
   updatedAt: Date;
   patient?: PatientProfile;
+  doctor?: { firstName?: string; lastName?: string };
 }
 
 export interface ReviewAnalysis {

@@ -9,14 +9,19 @@ export default function registerChatSocket(io) {
 
     // Ensure user identity is present from auth middleware
     if (!socket.userId) {
-      logger.warn('Chat socket missing userId from auth middleware, disconnecting');
-      socket.disconnect(true);
-      return;
+      logger.warn('Chat socket missing userId from auth middleware - will be set on join-user');
+      // Don't disconnect - let the join-user event set the userId
     }
 
     // Join user to their personal room
     socket.on('join-user', async (userId) => {
       try {
+        // Set userId if not already set
+        if (!socket.userId) {
+          socket.userId = parseInt(userId);
+          logger.info(`Setting socket userId to ${userId}`);
+        }
+        
         // Prevent users from joining rooms other than their own
         if (parseInt(userId) !== socket.userId) {
           socket.emit('error', { message: 'Access denied' });
@@ -68,35 +73,27 @@ export default function registerChatSocket(io) {
           return;
         }
 
-        // Debug logging to understand the data structure
-        logger.info(`Appointment data for ${appointmentId}:`, {
-          appointmentId: appointment.id,
-          doctorProfileId: appointment.doctorId,
-          patientProfileId: appointment.patientId,
-          doctorUserId: appointment.doctor?.user?.id,
-          patientUserId: appointment.patient?.user?.id,
-          socketUserId: socket.userId
-        });
+        // Enforce participant check
+        const doctorUserId = appointment.doctor?.user?.id;
+        const patientUserId = appointment.patient?.user?.id;
+        const isParticipant = socket.userId === doctorUserId || socket.userId === patientUserId;
+        if (!isParticipant) {
+          socket.emit('error', { message: 'Access denied: not a participant in this appointment' });
+          return;
+        }
 
-        // Check if user is part of this appointment by comparing user IDs
-        // appointment.doctor.user.id and appointment.patient.user.id are the actual user IDs
-        
-        // Always allow access - remove restrictive access check
-        // The user room access is sufficient for security
-        logger.info(`User ${socket.userId} accessing appointment ${appointmentId}`);
-        
-        // Optional: Log the access details for debugging
-        if (socket.userId === appointment.doctor.user.id) {
-          logger.info(`Doctor ${socket.userId} joining appointment ${appointmentId}`);
-        } else if (socket.userId === appointment.patient.user.id) {
-          logger.info(`Patient ${socket.userId} joining appointment ${appointmentId}`);
-        } else {
-          logger.info(`User ${socket.userId} joining appointment ${appointmentId} (access granted)`);
+        // Enforce time window for messaging (±30 minutes around scheduled start)
+        const now = new Date();
+        const apptDate = new Date(appointment.date);
+        const activeWindowMs = 30 * 60 * 1000;
+        const isWithinWindow = Math.abs(now.getTime() - apptDate.getTime()) <= activeWindowMs;
+        if (!isWithinWindow) {
+          socket.emit('error', { message: 'Messaging available only during appointment time window' });
+          return;
         }
 
         socket.join(`appointment-${appointmentId}`);
         logger.info(`User ${socket.userId} joined appointment ${appointmentId}`);
-        
         socket.emit('appointment-joined', { appointmentId });
       } catch (error) {
         logger.error('Error joining appointment:', error);
@@ -112,6 +109,34 @@ export default function registerChatSocket(io) {
         if (!socket.userId) {
           socket.emit('error', { message: 'User not authenticated' });
           return;
+        }
+
+        // If appointment-bound message, validate participant and time window
+        if (appointmentId) {
+          const appointment = await prisma.appointment.findUnique({
+            where: { id: parseInt(appointmentId) },
+            include: { doctor: { include: { user: true } }, patient: { include: { user: true } } }
+          });
+          if (!appointment) {
+            socket.emit('error', { message: 'Appointment not found' });
+            return;
+          }
+          const doctorUserId = appointment.doctor?.user?.id;
+          const patientUserId = appointment.patient?.user?.id;
+          const isParticipant = socket.userId === doctorUserId || socket.userId === patientUserId;
+          if (!isParticipant) {
+            socket.emit('error', { message: 'Access denied: not a participant in this appointment' });
+            return;
+          }
+          const now = new Date();
+          const apptDate = new Date(appointment.date);
+          const activeWindowMs = 30 * 60 * 1000;
+          const isWithinWindow = Math.abs(now.getTime() - apptDate.getTime()) <= activeWindowMs;
+          if (!isWithinWindow) {
+            socket.emit('error', { message: 'Messaging available only during appointment time window' });
+            return;
+          }
+          // For TEXT appointments, messaging is allowed; for VIDEO, messaging also allowed
         }
 
         // Create message in database
@@ -217,7 +242,9 @@ export default function registerChatSocket(io) {
     socket.on('disconnect', () => {
       try {
         socket.removeAllListeners();
-      } catch {}
+      } catch (_err) {
+        void _err;
+      }
       logger.info(`Chat socket disconnected: ${socket.id}`);
     });
   });

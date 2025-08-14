@@ -83,12 +83,15 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: () => {
     // Skip rate limiting for development environment
     return process.env.NODE_ENV === 'development';
   }
 });
 app.use('/api/', limiter);
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
 // Specific rate limiting for auth routes (more lenient for login attempts)
 const authLimiter = rateLimit({
@@ -97,7 +100,7 @@ const authLimiter = rateLimit({
   message: 'Too many login attempts from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: () => {
     // Skip rate limiting for development environment
     return process.env.NODE_ENV === 'development';
   }

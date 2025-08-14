@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
+import { useNavigate } from 'react-router-dom';
 import type { RootState } from '../../Redux/store';
 import { fetchNotifications, markAsRead, markAllAsRead as markAllAsReadAction } from '../../Redux/notificationSlice/notificationSlice';
 import { getSocket } from '../../lib/socket';
@@ -12,6 +13,7 @@ interface NotificationDropdownProps {
 
 export default function NotificationDropdown({ className = '' }: NotificationDropdownProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { user } = useAppSelector((state: RootState) => state.auth);
   const { notifications, loading } = useAppSelector((state: RootState) => state.notification);
   
@@ -33,37 +35,34 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
     // Connect to notification socket
     socketRef.current = getSocket('/notifications');
     
-    // Join user to notification room
-    socketRef.current.emit('join-user', user.id);
+    // Connect the socket
+    socketRef.current.connect();
+    
+    // Join user to notification room after connection
+    socketRef.current.on('connect', () => {
+      socketRef.current.emit('join-user', user.id);
+    });
 
     // Listen for new notifications
-    socketRef.current.on('new-notification', (notification: Notification) => {
-      console.log('New notification received:', notification);
-      // Refresh notifications list
+    socketRef.current.on('new-notification', (_notification: Notification) => {
       dispatch(fetchNotifications());
     });
 
-    // Listen for notification read confirmation
-    socketRef.current.on('notification-read', (data: { notificationId: number }) => {
-      console.log('Notification marked as read:', data.notificationId);
-    });
+    // Listen for notification read confirmation (no-op)
+    socketRef.current.on('notification-read', (_data: { notificationId: number }) => {});
 
-    // Listen for connection confirmation
-    socketRef.current.on('joined', (data: { userId: number, role: string }) => {
-      console.log('Joined notification room:', data);
-    });
+    // Listen for connection confirmation (no-op)
+    socketRef.current.on('joined', (_data: { userId: number, role: string }) => {});
 
-    // Listen for errors
-    socketRef.current.on('error', (error: { message: string }) => {
-      console.error('Notification socket error:', error);
-    });
+    // Listen for errors (no-op)
+    socketRef.current.on('error', (_error: { message: string }) => {});
 
     // Fetch initial notifications
     dispatch(fetchNotifications());
 
     // Cleanup on unmount
     return () => {
-      if (socketRef.current) {
+      if (socketRef.current && socketRef.current.connected) {
         socketRef.current.disconnect();
       }
     };
@@ -85,29 +84,22 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.isRead) {
-      try {
-        await dispatch(markAsRead(notification.id)).unwrap();
-        // Socket will emit 'notification-read' event
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
-      }
+      await dispatch(markAsRead(notification.id)).unwrap();
     }
 
     // Handle navigation based on notification type
     switch (notification.type) {
       case 'APPOINTMENT':
         // Navigate to appointments page
-        window.location.href = user?.role === 'DOCTOR' ? '/doctor/appointments' : '/patient/appointments';
+        navigate(user?.role === 'DOCTOR' ? '/doctor/appointments' : '/patient/appointments');
         break;
       case 'MESSAGE':
         // Navigate to messages page
-        window.location.href = user?.role === 'DOCTOR' ? '/doctor/messages' : '/patient/messages';
+        navigate(user?.role === 'DOCTOR' ? '/doctor/messages' : '/patient/messages');
         break;
       case 'REVIEW':
-        // Navigate to reviews page (for doctors)
-        if (user?.role === 'DOCTOR') {
-          window.location.href = '/doctor/reviews';
-        }
+        // Navigate to reviews page (for both doctors and patients)
+        navigate(user?.role === 'DOCTOR' ? '/doctor/reviews' : '/patient/reviews');
         break;
       case 'SYSTEM':
         // System notifications don't navigate
@@ -118,11 +110,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
   };
 
   const markAllAsRead = async () => {
-    try {
-      await dispatch(markAllAsReadAction()).unwrap();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-    }
+    await dispatch(markAllAsReadAction()).unwrap();
   };
 
   const getNotificationIcon = (type: NotificationType) => {
@@ -263,7 +251,7 @@ export default function NotificationDropdown({ className = '' }: NotificationDro
               <button
                 onClick={() => {
                   // Navigate to notifications page or show all notifications
-                  window.location.href = user?.role === 'DOCTOR' ? '/doctor/notifications' : '/patient/notifications';
+                  navigate(user?.role === 'DOCTOR' ? '/doctor/notifications' : '/patient/notifications');
                 }}
                 className="w-full text-sm text-blue-600 hover:text-blue-800 text-center"
               >

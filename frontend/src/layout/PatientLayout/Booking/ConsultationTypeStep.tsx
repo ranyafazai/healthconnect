@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+// No React default import required
+import { useState } from 'react';
 import FullLine from './FullLine';
 import DoctorCard from './DoctorCard';
 import { BookingSummary } from './BookingSummary';
 import type { DoctorProfile } from '../../../types/data/doctor';
-import type { ConsultationType } from '../../../types/data/appointment';
+// import type { ConsultationType } from '../../../types/data/appointment';
 
 interface ConsultationTypeProps {
   onNext: () => void;
@@ -70,7 +71,10 @@ const ConsultationTypeStep: React.FC<ConsultationTypeProps> = ({ onNext, onPrev,
             }}>
               {/* Video Consultation Option */}
               <div 
-                onClick={() => setSelectedType('VIDEO')}
+                onClick={() => {
+                  setSelectedType('VIDEO');
+                  updateBookingData({ consultationType: 'VIDEO' });
+                }}
                 style={{
                   border: selectedType === 'VIDEO' ? '3px solid #008CBA' : '2px solid #E0E0E0',
                   borderRadius: '15px',
@@ -128,7 +132,10 @@ const ConsultationTypeStep: React.FC<ConsultationTypeProps> = ({ onNext, onPrev,
 
               {/* Text Chat Option */}
               <div 
-                onClick={() => setSelectedType('TEXT')}
+                onClick={() => {
+                  setSelectedType('TEXT');
+                  updateBookingData({ consultationType: 'TEXT' });
+                }}
                 style={{
                   border: selectedType === 'TEXT' ? '3px solid #008CBA' : '2px solid #E0E0E0',
                   borderRadius: '15px',
@@ -244,7 +251,7 @@ const ConsultationTypeStep: React.FC<ConsultationTypeProps> = ({ onNext, onPrev,
             <BookingSummary 
               onNext={handleNext}
               onPrev={onPrev}
-              bookingData={bookingData}
+              bookingData={{ ...bookingData, consultationType: selectedType }}
               currentStep={2}
             />
           </div>

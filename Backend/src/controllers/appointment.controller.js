@@ -5,7 +5,6 @@ import {
   errorResponse, 
   notFoundResponse, 
   serverErrorResponse,
-  createdResponse,
   appointmentResponse,
   listResponse,
   paginatedResponse
@@ -186,11 +185,16 @@ class AppointmentController {
         prisma.appointment.findMany({
           where: { patientId: parseInt(patientId) },
           include: {
-          doctor: {
-            include: {
-              user: true
+            doctor: {
+              include: {
+                user: true
+              }
+            },
+            patient: {
+              include: {
+                user: true
+              }
             }
-          }
           },
           orderBy: { date: 'desc' },
           skip,
@@ -429,22 +433,9 @@ class AppointmentController {
           'Hypertension check': 'Amlodipine 5mg daily, salt restriction'
         };
         
-        // Generate realistic follow-up dates
-        const followUpMap = {
-          'Chest pain evaluation': '2 weeks',
-          'Blood pressure consultation': '1 month',
-          'Skin rash evaluation': '1 week',
-          'Headache evaluation': '3 weeks',
-          'Joint pain evaluation': '1 month',
-          'Anxiety management': '2 weeks',
-          'Diabetes management': '3 months',
-          'Hypertension check': '1 month'
-        };
-        
         const symptoms = symptomsMap[reason] || 'General symptoms reported';
         const diagnosis = diagnosisMap[reason] || 'Clinical evaluation completed';
         const prescription = prescriptionMap[reason] || null;
-        const followUpPeriod = followUpMap[reason] || 'As needed';
         
         // Calculate follow-up date (3 months from appointment date)
         const followUpDate = new Date(apt.date);
@@ -471,6 +462,7 @@ class AppointmentController {
         
         return {
           id: apt.id,
+          doctorId: apt.doctorId,
           doctorName: `Dr. ${apt.doctor.firstName} ${apt.doctor.lastName}`,
           doctorSpecialization: apt.doctor.specialization,
           consultationDate: apt.date,

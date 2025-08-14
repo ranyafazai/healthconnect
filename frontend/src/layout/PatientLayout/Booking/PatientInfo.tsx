@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useEffect, useState } from 'react';
 import { useAppSelector } from '../../../Redux/hooks';
 import { BookingSummary } from './BookingSummary';
 import FullLine from './FullLine';

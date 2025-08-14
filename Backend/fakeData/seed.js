@@ -101,8 +101,6 @@ function generateFile(ownerId, type) {
 }
 
 async function main() {
-  console.log('🌱 Starting database seeding...');
-
   try {
     // Clear existing data
     await prisma.notification.deleteMany();
@@ -113,6 +111,7 @@ async function main() {
     await prisma.appointment.deleteMany();
     await prisma.medicalRecord.deleteMany();
     await prisma.file.deleteMany();
+    await prisma.userSettings.deleteMany();
     await prisma.doctorProfile.deleteMany();
     await prisma.patientProfile.deleteMany();
     await prisma.user.deleteMany();
@@ -334,7 +333,6 @@ async function main() {
     }
 
     // Create past consultations specifically for PatientTest
-    console.log('📋 Creating past consultations for PatientTest...');
     const patientTest = testPatientUser;
     const pastConsultationDoctors = doctors.slice(0, 3); // Use first 3 doctors for variety
     
@@ -662,25 +660,8 @@ async function main() {
     }
 
 
-    console.log('✅ Database seeding completed successfully!');
-    console.log(`\n📊 Summary of created data:`);
-    console.log(`👨‍⚕️  Doctors: ${doctors.length}`);
-    console.log(`👥 Patients: ${patients.length}`);
-
-    console.log(`📋 Medical Records: ${patients.length * 2} (average)`);
-    console.log(`💬 Messages: 50+ (including PatientTest consultation messages)`);
-    console.log(`🔔 Notifications: ${(doctors.length + patients.length) * 3} (average)`);
-    console.log(`📁 Files: ${doctors.length * 3 + patients.length * 2} (average)`);
-    
-    console.log(`\n🔑 Test Accounts:`);
-    console.log(`   Doctor: doctor.test@healthyconnect.com / DoctorPass123!`);
-    console.log(`   Patient: patient.test@mail.com / PatientPass123!`);
-    
-    console.log(`\n💡 The database now contains realistic test data for testing all features!`);
-    console.log(`📋 PatientTest now has 8 past consultations with messages and recordings for testing!`);
-
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('Error seeding database:', error);
     throw error;
   } finally {
     await prisma.$disconnect();

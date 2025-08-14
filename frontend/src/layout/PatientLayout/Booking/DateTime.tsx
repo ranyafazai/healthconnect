@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// No React default import required
+import { useEffect, useState } from 'react';
 import DoctorCard from './DoctorCard';
 import FullLine from './FullLine';
 import { BookingSummary } from './BookingSummary';
@@ -83,7 +84,6 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
       const response = await getDoctorAvailability(doctor.id, selectedDate);
       setAvailableSlots(response.data.data.availableSlots || timeSlots);
     } catch (error) {
-      console.error('Error fetching availability:', error);
       setError('Failed to load availability. Showing default time slots.');
       // Fallback to all time slots if API fails
       setAvailableSlots(timeSlots);
@@ -102,7 +102,7 @@ const DateTime: React.FC<DateTimeProps> = ({ onNext, bookingData, updateBookingD
   };
 
   // Update booking data immediately when date or time changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedDate && selectedTime) {
       updateBookingData({ date: selectedDate, time: selectedTime });
     }

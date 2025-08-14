@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../../Redux/hooks';
+import { useAppSelector } from '../../Redux/hooks';
 import { Calendar, Clock, User, FileText, Star, MessageSquare, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { getPastConsultations } from '../../Api/appointment.api';
-import type { Appointment } from '../../types/data/appointment';
+ 
+import { useReviewModalContext } from '../../contexts/ReviewModalContext';
+import { getFileUrl } from '../../utils/fileUrl';
 
 type FilterStatus = 'ALL' | 'COMPLETED' | 'CANCELLED';
 
 interface UIConsultation {
+  doctorId: number;
   id: number;
   doctorName: string;
   doctorSpecialization: string;
@@ -29,6 +32,7 @@ interface UIConsultation {
 }
 
 export default function PastConsultation() {
+  const { openReviewModal } = useReviewModalContext();
   const { user } = useAppSelector((state) => state.auth);
   const [consultations, setConsultations] = useState<UIConsultation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -308,7 +312,7 @@ export default function PastConsultation() {
                   <div className="flex items-center gap-3">
                     {consultation.doctorImage ? (
                       <img
-                        src={consultation.doctorImage}
+                        src={getFileUrl(consultation.doctorImage)}
                         alt={consultation.doctorName}
                         className="w-12 h-12 rounded-full object-cover"
                       />
@@ -356,6 +360,19 @@ export default function PastConsultation() {
                         <ChevronDown className="w-4 h-4" />
                       </>
                     )}
+                  </button>
+                  
+                  {/* Test Review Button */}
+                  <button 
+                    onClick={() => {
+                      const doctorName = consultation.doctorName || 'Unknown Doctor';
+                      const doctorId = consultation.doctorId || 0;
+                      const appointmentId = consultation.id || 0;
+                      openReviewModal(doctorId, doctorName, appointmentId);
+                    }}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    🧪 Test Review
                   </button>
                 </div>
 

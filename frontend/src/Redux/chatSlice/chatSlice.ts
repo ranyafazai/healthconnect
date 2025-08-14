@@ -3,7 +3,6 @@ import { getSocket } from '../../lib/socket';
 import { getConversation, sendMessage, getAppointmentMessages } from '../../Api/message.api';
 import axios from '../../lib/axios';
 import type { Message, MessageType } from '../../types/data/message';
-import type { RootState } from '../store';
 
 export type ConversationLite = {
   id: number;
@@ -36,13 +35,9 @@ const chatSockets: Map<number, ReturnType<typeof getSocket>> = new Map();
 
 // Function to join appointment room
 export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
-  
-  
   const chatSocket = chatSockets.get(userId);
   if (chatSocket && chatSocket.connected) {
-    
     chatSocket.emit('join-appointment', appointmentId);
-    console.log('🔌 join-appointment event emitted for user', userId, 'to appointment', appointmentId);
   } else {
     // Socket not connected
   }
@@ -51,63 +46,60 @@ export const joinAppointmentRoom = (appointmentId: number, userId: number) => {
 export const connectChat = createAsyncThunk(
   'chat/connect',
   async (currentUserId: number, { dispatch }) => {
-  
-    
     // Check if user already has a socket connection
     if (chatSockets.has(currentUserId)) {
       const existingSocket = chatSockets.get(currentUserId);
       if (existingSocket && existingSocket.connected) {
-        
         return;
       } else {
-        
         chatSockets.delete(currentUserId);
       }
     }
-    
-    
+
     const chatSocket = getSocket('/chat');
-    
-    // Log socket state
-    
-    
+
     chatSockets.set(currentUserId, chatSocket);
 
     // Bind socket events before connecting
     const onNewMessage = (msg: Message) => {
-      
-      
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
-        console.log('📨 Message is for this user, adding to state');
-        console.log('📨 Dispatching addMessage for user:', currentUserId);
-        
         dispatch(addMessage(msg));
         
-        console.log('📨 Message dispatched to Redux state for user:', currentUserId);
+        // Also dispatch an action to update conversation list
+        if (msg.appointmentId && msg.content) {
+          dispatch(updateConversationLastMessage({
+            conversationId: msg.appointmentId,
+            message: msg.content,
+            timestamp: typeof msg.createdAt === 'string' ? msg.createdAt : new Date(msg.createdAt).toISOString()
+          }));
+        }
       } else {
-        // Message not for this user
+        
       }
     };
 
     const onMessageSent = (msg: Message) => {
-      
-      
       // Only add the message if it's intended for this user
       if (msg.receiverId === currentUserId || msg.senderId === currentUserId) {
         dispatch(addMessage(msg));
+        
+        // Also dispatch an action to update conversation list
+        if (msg.appointmentId && msg.content) {
+          dispatch(updateConversationLastMessage({
+            conversationId: msg.appointmentId,
+            message: msg.content,
+            timestamp: typeof msg.createdAt === 'string' ? msg.createdAt : new Date(msg.createdAt).toISOString()
+          }));
+        }
       } else {
-        // Message not for this user
+        
       }
     };
 
-    const onJoined = () => {
-      // User joined chat room
-    };
+    const onJoined = () => {};
 
-    const onAppointmentJoined = () => {
-      // User joined appointment room
-    };
+    const onAppointmentJoined = () => {};
 
     // Bind all events
     chatSocket.on('joined', onJoined);
@@ -116,7 +108,6 @@ export const connectChat = createAsyncThunk(
     chatSocket.on('message-sent', onMessageSent);
 
     chatSocket.on('connect', () => {
-      
       dispatch(setIsConnected(true));
       chatSocket.emit('join-user', currentUserId);
       // Fetch unread count upon connect
@@ -128,28 +119,26 @@ export const connectChat = createAsyncThunk(
     });
 
     chatSocket.on('disconnect', () => {
-      
       dispatch(setIsConnected(false));
     });
 
-    chatSocket.on('error', (error) => {
-      console.error('❌ Chat socket error for user', currentUserId, ':', error);
-    });
+    chatSocket.on('error', () => {});
 
-    // If socket is already connected, emit join-user immediately
+    // Connect the socket
+    chatSocket.connect();
+    
+    // Wait for connection to be established
     if (chatSocket.connected) {
-      
       chatSocket.emit('join-user', currentUserId);
     } else {
-      // Socket not yet connected, waiting for connect event
+      // Socket will emit join-user when connected via the connect event handler
     }
   }
 );
 
 export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId: number) => {
   const chatSocket = chatSockets.get(userId);
-  if (chatSocket) {
-  
+  if (chatSocket && chatSocket.connected) {
     chatSocket.disconnect();
     chatSockets.delete(userId);
   }
@@ -158,7 +147,9 @@ export const disconnectChat = createAsyncThunk('chat/disconnect', async (userId:
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
   async (otherUserId: number) => {
+    console.log('Fetching conversation for user:', otherUserId);
     const res = await getConversation(otherUserId);
+    console.log('Conversation response:', res);
     return res.data?.data ?? [];
   }
 );
@@ -166,7 +157,9 @@ export const fetchConversation = createAsyncThunk(
 export const fetchAppointmentMessages = createAsyncThunk(
   'chat/fetchAppointmentMessages',
   async (appointmentId: number) => {
+    console.log('Fetching appointment messages for:', appointmentId);
     const res = await getAppointmentMessages(appointmentId);
+    console.log('Appointment messages response:', res);
     return res.data?.data ?? [];
   }
 );
@@ -178,22 +171,103 @@ export const sendTextMessage = createAsyncThunk(
     { getState, dispatch }
   ) => {
     await sendMessage({ ...payload, type: payload.type ?? 'TEXT' });
-    // Optimistic UI update handled by component previously; here we'll let socket echo back
-    // For immediate feel, dispatch optional optimistic message if needed
-    const state = getState() as RootState;
-    const currentUserId = state?.auth?.user?.id as number | undefined;
+         // Optimistic UI update handled by component previously; here we'll let socket echo back
+     // For immediate feel, dispatch optional optimistic message if needed
+     const state = getState() as any;
+     const currentUserId = state?.auth?.user?.id as number | undefined;
     if (currentUserId) {
-      const optimistic: Message = {
-        id: Date.now(),
-        senderId: Number(currentUserId),
-        receiverId: payload.receiverId,
-        appointmentId: payload.appointmentId ?? undefined,
-        content: payload.content,
-        type: 'TEXT',
-        isRead: false,
-        createdAt: new Date(),
-      };
+             const optimistic: Message = {
+         id: Date.now(),
+         senderId: Number(currentUserId),
+         receiverId: payload.receiverId,
+         appointmentId: payload.appointmentId ?? undefined,
+         content: payload.content,
+         type: 'TEXT',
+         isRead: false,
+         createdAt: new Date().toISOString() as any, // Convert to ISO string for Redux serialization
+       };
       dispatch(addMessage(optimistic));
+    }
+  }
+);
+
+export const sendFileMessage = createAsyncThunk(
+  'chat/sendFileMessage',
+  async (
+    payload: { receiverId: number; file: File; appointmentId?: number | null },
+    { getState, dispatch }
+  ) => {
+    try {
+      // Determine message type based on file type
+      let messageType: MessageType = 'FILE';
+      if (payload.file.type.startsWith('image/')) {
+        messageType = 'IMAGE';
+      } else if (payload.file.type.startsWith('video/')) {
+        messageType = 'VIDEO';
+      }
+      
+             // Create optimistic message first (for immediate UI feedback)
+       const state = getState() as any;
+       const currentUserId = state?.auth?.user?.id as number | undefined;
+      if (currentUserId) {
+        const optimistic: Message = {
+          id: Date.now(),
+          senderId: Number(currentUserId),
+          receiverId: payload.receiverId,
+          appointmentId: payload.appointmentId ?? undefined,
+          content: payload.file.name,
+          type: messageType,
+          fileId: undefined, // Will be set after upload
+          isRead: false,
+          createdAt: new Date().toISOString() as any,
+        };
+        dispatch(addMessage(optimistic));
+      }
+      
+      // Upload the file
+      const formData = new FormData();
+      formData.append('file', payload.file);
+      formData.append('fileType', 'CHAT_MEDIA');
+      
+      const uploadResponse = await axios.post('/files', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      const fileId = uploadResponse.data?.data?.id;
+      
+      if (!fileId) {
+        throw new Error('Failed to upload file');
+      }
+      
+      // Send the message with the file ID via Socket.IO
+      if (currentUserId) {
+        const chatSocket = chatSockets.get(currentUserId);
+        if (chatSocket && chatSocket.connected) {
+          chatSocket.emit('send-message', {
+            receiverId: payload.receiverId,
+            appointmentId: payload.appointmentId,
+            content: payload.file.name,
+            type: messageType,
+            fileId: fileId
+          });
+        } else {
+          // Fallback to HTTP if Socket.IO not available
+          await sendMessage({
+            receiverId: payload.receiverId,
+            appointmentId: payload.appointmentId,
+            content: payload.file.name,
+            type: messageType,
+            fileId: fileId
+          });
+        }
+      }
+      
+      
+    } catch (error) {
+      console.error('Failed to send file message:', error);
+      throw error;
     }
   }
 );
@@ -210,19 +284,40 @@ const chatSlice = createSlice({
       state.messages = [];
     },
     addMessage(state, action: PayloadAction<Message>) {
+      
+      
+      // Ensure createdAt is a string for Redux serialization
+      const messageToAdd = {
+        ...action.payload,
+        createdAt: typeof action.payload.createdAt === 'string' 
+          ? action.payload.createdAt 
+          : new Date(action.payload.createdAt).toISOString()
+      };
+      
       // Check if message already exists to avoid duplicates
-      const existingMessageIndex = state.messages.findIndex(msg => msg.id === action.payload.id);
+      const existingMessageIndex = state.messages.findIndex(msg => msg.id === messageToAdd.id);
       
       if (existingMessageIndex !== -1) {
         // Update existing message (for optimistic updates)
-        state.messages[existingMessageIndex] = action.payload;
+        
+        state.messages[existingMessageIndex] = messageToAdd;
       } else {
         // Add new message
-        state.messages.push(action.payload);
+        
+        state.messages.push(messageToAdd);
       }
       
       // Sort messages by creation time (newest at the bottom for chat UI)
-      state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      state.messages.sort((a, b) => {
+        const timeA = typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : a.createdAt.getTime();
+        const timeB = typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : b.createdAt.getTime();
+        return timeA - timeB;
+      });
+      
+      
+    },
+    updateConversationLastMessage(_state, _action: PayloadAction<{ conversationId: number; message: string; timestamp: string }>) {
+      // Handled in UI hook
     },
     clearMessages(state) {
       state.messages = [];
@@ -246,12 +341,19 @@ const chatSlice = createSlice({
         const newMessages = action.payload.filter(msg => !existingMessageIds.has(msg.id));
         
         if (newMessages.length > 0) {
-          console.log('📥 Merging', newMessages.length, 'new conversation messages from API');
-          state.messages.push(...newMessages);
-          // Sort messages by creation time
-          state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        } else {
-          console.log('📥 No new conversation messages to merge from API');
+          // Ensure all messages have string dates for Redux serialization
+          const serializedMessages = newMessages.map(msg => ({
+            ...msg,
+            createdAt: typeof msg.createdAt === 'string' 
+              ? msg.createdAt 
+              : new Date(msg.createdAt).toISOString()
+          }));
+          state.messages.push(...serializedMessages);
+          state.messages.sort((a, b) => {
+            const timeA = typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : a.createdAt.getTime();
+            const timeB = typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : b.createdAt.getTime();
+            return timeA - timeB;
+          });
         }
       })
       .addCase(fetchConversation.rejected, (state) => {
@@ -267,12 +369,19 @@ const chatSlice = createSlice({
         const newMessages = action.payload.filter(msg => !existingMessageIds.has(msg.id));
         
         if (newMessages.length > 0) {
-          console.log('📥 Merging', newMessages.length, 'new messages from API');
-          state.messages.push(...newMessages);
-          // Sort messages by creation time
-          state.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        } else {
-          console.log('📥 No new messages to merge from API');
+          // Ensure all messages have string dates for Redux serialization
+          const serializedMessages = newMessages.map(msg => ({
+            ...msg,
+            createdAt: typeof msg.createdAt === 'string' 
+              ? msg.createdAt 
+              : new Date(msg.createdAt).toISOString()
+          }));
+          state.messages.push(...serializedMessages);
+          state.messages.sort((a, b) => {
+            const timeA = typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : a.createdAt.getTime();
+            const timeB = typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : b.createdAt.getTime();
+            return timeA - timeB;
+          });
         }
       })
       .addCase(fetchAppointmentMessages.rejected, (state) => {
@@ -281,9 +390,9 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations, setUnreadCount } = chatSlice.actions;
+export const { setIsConnected, selectConversation, addMessage, clearMessages, setConversations, setUnreadCount, updateConversationLastMessage } = chatSlice.actions;
 
-export const selectChat = (state: RootState) => state.chat as ChatState;
+export const selectChat = (state: any) => state.chat as ChatState;
 
 export default chatSlice.reducer;
 
