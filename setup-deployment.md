@@ -8,11 +8,14 @@
 4. Under **Source**, select **GitHub Actions**
 5. Save the settings
 
-## Step 2: Update the Redirect URL
+## Step 2: Configure Your Backend URL
 
-1. Edit `index.html` in the root directory
-2. Replace `https://your-app-url.com` with your actual deployed app URL
-3. Update the GitHub Pages URL in the meta tags
+1. Set up your backend deployment (Railway, Render, or Heroku)
+2. Get your backend URL (e.g., `https://your-backend-app.railway.app`)
+3. Add environment variables to your GitHub repository secrets:
+   - `VITE_API_URL`: `https://your-backend-app.railway.app/api`
+   - `VITE_SOCKET_URL`: `https://your-backend-app.railway.app`
+   - `VITE_BASE_URL`: `https://your-backend-app.railway.app`
 
 ## Step 3: Deploy Your Backend
 
