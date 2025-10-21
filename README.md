@@ -4,7 +4,7 @@
 
 ## 🌐 Live Application
 
-**🚀 [Visit the Live App](https://yourteam-dev.github.io/HealthyConnect/)** - Click here to access the deployed application directly!
+**🚀 [Visit the Live App](https://ranyafazai.github.io/healthconnect/)** - Click here to access the deployed application directly!
 
 ---
 
@@ -159,7 +159,7 @@ Step-by-step:
 ### Frontend Deployment (GitHub Pages)
 The frontend is automatically deployed to GitHub Pages when you push to the main branch.
 
-**Live URL:** https://yourteam-dev.github.io/HealthyConnect/
+**Live URL:** https://ranyafazai.github.io/healthconnect/
 
 ### Backend Deployment Options
 
@@ -195,10 +195,10 @@ JWT_EXPIRES_IN="24h"
 # Server
 NODE_ENV="production"
 PORT=5000
-FRONTEND_URL="https://yourteam-dev.github.io/HealthyConnect"
+FRONTEND_URL="https://ranyafazai.github.io/healthconnect"
 
 # CORS
-FRONTEND_URLS="https://yourteam-dev.github.io/HealthyConnect"
+FRONTEND_URLS="https://ranyafazai.github.io/healthconnect"
 
 # Add other production environment variables as needed
 ```
