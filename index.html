@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthyConnect - Telehealth Platform</title>
+    <meta name="description" content="HealthyConnect is a full-stack telehealth platform that enables seamless communication between Patients and Doctors through text or video consultations.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourteam-dev.github.io/HealthyConnect/">
+    <meta property="og:title" content="HealthyConnect - Telehealth Platform">
+    <meta property="og:description" content="HealthyConnect is a full-stack telehealth platform that enables seamless communication between Patients and Doctors through text or video consultations.">
+    <meta property="og:image" content="https://yourteam-dev.github.io/HealthyConnect/healthconnect-favicon.svg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://yourteam-dev.github.io/HealthyConnect/">
+    <meta property="twitter:title" content="HealthyConnect - Telehealth Platform">
+    <meta property="twitter:description" content="HealthyConnect is a full-stack telehealth platform that enables seamless communication between Patients and Doctors through text or video consultations.">
+    <meta property="twitter:image" content="https://yourteam-dev.github.io/HealthyConnect/healthconnect-favicon.svg">
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .redirect-info {
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .countdown {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .manual-link {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .manual-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🏥</div>
+        <h1>HealthyConnect</h1>
+        <p>Your telehealth platform is loading...</p>
+        
+        <div class="redirect-info">
+            <div class="spinner"></div>
+            <p>Redirecting to the app in <span class="countdown" id="countdown">5</span> seconds</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">If you're not redirected automatically, click the button below:</p>
+        </div>
+        
+        <a href="https://your-app-url.com" class="manual-link" id="appLink">
+            Go to HealthyConnect App
+        </a>
+    </div>
+
+    <script>
+        // Replace this URL with your actual deployed app URL
+        const APP_URL = 'https://your-app-url.com'; // Update this with your actual app URL
+        
+        // Update the link
+        document.getElementById('appLink').href = APP_URL;
+        
+        // Countdown and redirect
+        let countdown = 5;
+        const countdownElement = document.getElementById('countdown');
+        
+        const timer = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(timer);
+                window.location.href = APP_URL;
+            }
+        }, 1000);
+        
+        // Immediate redirect for faster loading
+        setTimeout(() => {
+            window.location.href = APP_URL;
+        }, 100);
+    </script>
+</body>
+</html>

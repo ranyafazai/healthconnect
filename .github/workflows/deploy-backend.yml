@@ -1,0 +1,60 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: Backend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd Backend
+        npm ci
+        
+    - name: Build backend
+      run: |
+        cd Backend
+        npm run build
+        
+    # Add your deployment steps here
+    # Examples for different platforms:
+    
+    # For Railway:
+    # - name: Deploy to Railway
+    #   uses: railway-app/railway-deploy@v1
+    #   with:
+    #     railway-token: ${{ secrets.RAILWAY_TOKEN }}
+    #     service: your-backend-service
+    
+    # For Render:
+    # - name: Deploy to Render
+    #   run: |
+    #     curl -X POST \
+    #       -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+    #       -H "Content-Type: application/json" \
+    #       -d '{"serviceId": "${{ secrets.RENDER_SERVICE_ID }}"}' \
+    #       https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
+    
+    # For Heroku:
+    # - name: Deploy to Heroku
+    #   uses: akhileshns/heroku-deploy@v3.12.12
+    #   with:
+    #     heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+    #     heroku_app_name: "your-app-name"
+    #     heroku_email: "your-email@example.com"
+    #     appdir: "Backend"
