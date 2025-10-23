@@ -41,13 +41,18 @@ jobs:
         cd frontend
         npm run build
       env:
-        VITE_API_URL: ${{ secrets.VITE_API_URL }}
-        VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL }}
-        VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
+        VITE_API_URL: https://healthconnect-production.up.railway.app/api
+        VITE_SOCKET_URL: https://healthconnect-production.up.railway.app
+        VITE_BASE_URL: https://healthconnect-production.up.railway.app
         
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
+    - name: List build output
+      run: |
+        echo "Build output contents:"
+        ls -la ./frontend/dist/
+        
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
