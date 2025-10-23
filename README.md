@@ -4,7 +4,9 @@
 
 ## 🌐 Live Application
 
-**🚀 [Visit the Live App](https://ranyafazai.github.io/healthconnect/)** - Your HealthyConnect telehealth platform is now live!
+**🚀 [Visit the Live App](https://ranyafazai.github.io/healthconnect/)** - Your HealthyConnect telehealth platform is now live! 🎉
+
+*Backend successfully deployed on Railway - Frontend deploying via GitHub Pages*
 
 ---
 
